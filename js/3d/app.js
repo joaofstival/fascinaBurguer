@@ -20,8 +20,13 @@ const canvas = document.getElementById('stage')
 const mq = matchMedia('(max-width: 959px)')
 let mobile = mq.matches
 
+// Devolve a thread ao navegador entre as etapas pesadas (input/animações
+// do hero continuam fluindo enquanto a cena é montada)
+const breathe = () => new Promise((r) => setTimeout(r, 0))
+
 /* ── cena ── */
 const stage = createStage({ canvas, mobile })
+await breathe()
 let track = createTrack(stage, { mobile })
 let callouts = createCallouts(stage, { gsap, mobile })
 track.update(scrollY)
@@ -30,6 +35,7 @@ track.update(scrollY)
 const playIntro = scrollY < innerHeight * 0.5
 if (playIntro) prepareIntro(stage, { mobile })
 
+await breathe()
 await stage.compile()
 stage.frame(0)
 

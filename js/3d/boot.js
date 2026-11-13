@@ -16,10 +16,21 @@ function fallback(err) {
   if (window.ScrollTrigger) window.ScrollTrigger.refresh()
 }
 
+// Espera a página pintar o hero antes de montar a cena: os módulos já
+// estão baixando (modulepreload no <head>), mas executar o app.js cria o
+// WebGL, gera texturas e compila shaders — trava a thread principal por
+// algumas centenas de ms. Assim o texto aparece primeiro e o 3D entra logo
+// depois, em vez de a tela ficar vazia até tudo ficar pronto.
+const afterFirstPaint = () => new Promise((resolve) => {
+  requestAnimationFrame(() => setTimeout(resolve, 0))
+})
+
 if (root.classList.contains('has-3d')) {
-  // Se a cena não ficar pronta em 15 s (rede muito lenta), desiste do 3D
-  const timer = setTimeout(() => fallback(new Error('timeout')), 15000)
-  import('./app.js')
-    .then(() => clearTimeout(timer))
-    .catch((err) => { clearTimeout(timer); fallback(err) })
+  afterFirstPaint().then(() => {
+    // Se a cena não ficar pronta em 15 s (rede muito lenta), desiste do 3D
+    const timer = setTimeout(() => fallback(new Error('timeout')), 15000)
+    return import('./app.js')
+      .then(() => clearTimeout(timer))
+      .catch((err) => { clearTimeout(timer); fallback(err) })
+  })
 }

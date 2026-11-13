@@ -58,20 +58,23 @@ Se o CDN falhar, a página continua 100% legível, só sem animações.
 
 | Slot | Caminho | Formato / tamanho recomendado |
 |------|---------|-------------------------------|
-| Logo (header, favicon, rodapé) | `assets/brand/logo.png` | PNG ou SVG com **fundo transparente**, quadrado, ≥ 512×512 |
-| Hero — imagem de fallback (sem JS / movimento reduzido) e pré-carregada | `assets/img/burger-duplo-close.jpg` (`.hero__fallback` e `<link rel="preload">`) | JPG/WebP 4:5, ~1024×1280, < 250 KB |
-| Card 1 — Fascina Clássico | `assets/img/burger-duplo-bacon-ingredientes.jpg` | JPG/WebP **4:5**, ~800×1000, < 200 KB |
-| Card 2 — Senhor Bacon | `assets/img/burger-bacon-tomate.jpg` | idem |
-| Card 3 — Smash Duplo Fascina | `assets/img/burger-duplo-close.jpg` | idem |
-| Card 4 — Segredo da Fascina | `assets/img/burger-segredo-da-fascina.jpg` | idem |
-| Card 5 — Combo Fascina | `assets/img/burger-rucula-batata-coca.jpg` | idem |
-| Card 6 — Milkshake de Morango | `assets/img/milkshake-morango.jpg` | idem |
+| Logo (header, favicon, rodapé) | `assets/brand/logo.png` (original) → versões leves `logo-64.png` (favicon), `logo-112.png` (header), `logo-320.webp` (rodapé) | PNG ou SVG com **fundo transparente**, quadrado, ≥ 512×512. Ao trocar, gere as versões: `sips -Z 64 logo.png --out logo-64.png`, `sips -Z 112 logo.png --out logo-112.png`, `cwebp -q 80 -resize 320 320 logo.png -o logo-320.webp` |
+| Hero — imagem de fallback (sem 3D / movimento reduzido; só é baixada nesse caso) | `assets/img/burger-duplo-close.webp` (`.hero__fallback`) | WebP 4:5, ~1024×1280, < 150 KB |
+| Card 1 — Fascina Clássico | `assets/img/burger-duplo-bacon-ingredientes.webp` | WebP **4:5**, ~800×1000, < 200 KB |
+| Card 2 — Senhor Bacon | `assets/img/burger-bacon-tomate.webp` | idem |
+| Card 3 — Smash Duplo Fascina | `assets/img/burger-duplo-close.webp` | idem |
+| Card 4 — Segredo da Fascina | `assets/img/burger-segredo-da-fascina.webp` | idem |
+| Card 5 — Combo Fascina | `assets/img/burger-rucula-batata-coca.webp` | idem |
+| Card 6 — Milkshake de Morango | `assets/img/milkshake-morango.webp` | idem |
 | Vídeo 1 — queijo derretendo (clipe alto) | `assets/video/queijo-derretendo.webm` + `.mp4` | vertical/4:5, 720p, 6–10 s em loop, **sem áudio**, < 2 MB cada |
-| Pôster do vídeo 1 | `assets/img/burger-segredo-da-fascina.jpg` (atributo `poster`) | JPG 4:5, mesmo enquadramento do 1º frame |
+| Pôster do vídeo 1 | `assets/img/burger-segredo-da-fascina.webp` (atributo `data-poster`, carregado perto da tela) | WebP 4:5, mesmo enquadramento do 1º frame |
 | Vídeo 2 — carne na chapa (clipe largo) | `assets/video/carne-na-chapa.webm` + `.mp4` | 16:10 ou 16:9, 720p, 6–10 s, sem áudio, < 2 MB cada |
-| Pôster do vídeo 2 | `assets/img/burger-duplo-bacon-ingredientes.jpg` | JPG 16:10 |
+| Pôster do vídeo 2 | `assets/img/burger-duplo-bacon-ingredientes.webp` | WebP 16:10 |
 | Imagem de compartilhamento (WhatsApp, Instagram, etc.) | `<meta property="og:image">` → hoje `assets/img/burger-duplo-close.jpg` | JPG **1200×630**; use URL absoluta (`https://seusite.com/...`) em produção |
 
+> As fotos são servidas em **WebP** (≈ 60% menores que JPG). Para converter:
+> `cwebp -q 78 -m 6 foto.jpg -o foto.webp`.
+>
 > Para trocar a foto de um card, edite o `src` **e** o `alt` (descrição do lanche) do `<img>`
 > dentro do respectivo `<li class="menu-card">` no `index.html`. Ajuste `width`/`height` para a
 > proporção real da imagem (evita "pulos" de layout).

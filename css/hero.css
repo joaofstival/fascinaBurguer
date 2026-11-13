@@ -150,6 +150,8 @@
    O palco do hero só reserva o espaço (a foto some) e o texto fica acima
    do canvas (z-index 2 no contexto da raiz — por isso o .hero não isola). */
 .has-3d .hero__stage { visibility: hidden; }
+/* a foto nem baixa (img lazy + display:none) quando o 3D está ativo */
+.has-3d .hero__fallback { display: none; }
 .has-3d .hero__inner { z-index: 2; }
 
 /* ---------- Indicador de rolagem ---------- */

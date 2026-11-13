@@ -54,6 +54,23 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
+  /* -------- Pôsteres dos vídeos: só baixam perto da tela -------- */
+  // (no HTML ficam em data-poster; um poster="" normal baixaria ~150 KB
+  // de fotos logo na abertura, para uma seção lá embaixo)
+  var posters = FB.qsa('video[data-poster]');
+  function setPoster(v) { v.poster = v.getAttribute('data-poster'); v.removeAttribute('data-poster'); }
+  if (!('IntersectionObserver' in window)) posters.forEach(setPoster);
+  else {
+    var posterIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        setPoster(e.target);
+        posterIO.unobserve(e.target);
+      });
+    }, { rootMargin: '800px 0px' });
+    posters.forEach(function (v) { posterIO.observe(v); });
+  }
+
   /* -------- GSAP -------- */
   if (!ctx.gsap || !ctx.ScrollTrigger) {
     // CDN falhou: tudo continua legível (estado estático)
