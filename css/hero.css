@@ -1,0 +1,251 @@
+/* ==========================================================================
+   Fascina Burguer — hero.css
+   Seção A: Hero com montagem do hambúrguer ilustrado (js/hero.js).
+   Mobile-first. Desktop (≥ 960px): duas colunas (texto | palco).
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  min-height: 100vh;               /* fallback para navegadores sem svh */
+  min-height: 100svh;
+  padding-top: var(--header-h);
+  overflow: clip;                  /* corta o brilho e as camadas "explodidas" */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Brilho quente (simula o calor da chapa) ---------- */
+.hero__glow {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 68%;
+  width: min(150vw, 980px);
+  aspect-ratio: 1;
+  margin-left: calc(min(150vw, 980px) / -2);
+  margin-top: calc(min(150vw, 980px) / -2);
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(255, 90, 31, .42) 0%,
+      rgba(230, 58, 31, .24) 26%,
+      rgba(255, 182, 39, .08) 46%,
+      transparent 66%);
+}
+/* Cintilação suave do calor: só opacidade (barato para compor) */
+.hero__glow::after {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 182, 39, .28), transparent 65%);
+  animation: hero-heat 3.2s ease-in-out infinite alternate;
+}
+
+/* ---------- Layout ---------- */
+.hero__inner {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: .5rem;
+  padding-block: clamp(1rem, .5rem + 2svh, 2rem) clamp(2.5rem, 2rem + 2svh, 4rem);
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;                      /* texto sempre acima das camadas do palco */
+}
+
+.hero__title {
+  font-size: var(--fs-hero);
+  line-height: .98;
+  margin-bottom: clamp(.9rem, .6rem + 1vw, 1.5rem);
+  text-wrap: balance;
+}
+/* Cada linha vira uma "máscara" para o reveal (js envolve o texto em .hero__line-inner) */
+.hero__line {
+  display: block;
+  overflow: hidden;
+  /* respiro para descendentes e itálico não serem cortados pela máscara */
+  padding: 0 .08em .1em 0;
+  margin-bottom: -.1em;
+}
+.hero__line-inner { display: block; }
+.hero__title em {
+  background: var(--grad-fogo);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: .06em;
+}
+
+.hero__sub {
+  max-width: 34rem;
+  font-size: .98rem;
+  line-height: 1.55;
+  color: rgba(245, 236, 224, .82);
+  margin-bottom: clamp(1.1rem, .8rem + 1vw, 2rem);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+.hero__actions .btn { padding-inline: .9rem; font-size: .9rem; }
+.hero__actions .btn--ghost { background: rgba(13, 11, 10, .6); } /* legível sobre o pão no mobile */
+.hero .eyebrow { font-size: .92rem; letter-spacing: .16em; margin-bottom: .6rem; }
+.hero .eyebrow::before { width: 1.5rem; }
+
+/* ---------- Palco do hambúrguer ---------- */
+.hero__stage {
+  position: relative;
+  z-index: 1;
+  height: clamp(280px, 44svh, 460px);
+  margin-top: -2.5rem;             /* no mobile o palco "abraça" os botões por trás */
+  display: grid;
+  place-items: center;
+}
+
+/* Fallback (sem JS, movimento reduzido ou sem GSAP) */
+.hero__fallback {
+  height: 100%;
+  max-height: 520px;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), 0 0 80px -10px rgba(255, 90, 31, .45);
+  transform: rotate(-2.5deg);
+  outline: 1px solid rgba(255, 182, 39, .18);
+  outline-offset: -1px;
+}
+.hero__stage:not(.is-built) { margin-top: 0; }   /* sem rig: nada de sobreposição */
+
+/* Com JS ativo e animações permitidas, o fallback fica oculto até o
+   hambúrguer ilustrado ser montado. Failsafe: se o JS falhar, aparece em 3s. */
+.js:not(.reduced-motion):not(.no-gsap) .hero__fallback {
+  opacity: 0;
+  animation: hero-failsafe .4s 3s forwards;
+}
+.hero__stage.is-built .hero__fallback { display: none; }
+
+/* Mesmo esquema para o texto (evita "flash" antes do reveal do GSAP).
+   (Obs.: animação CSS sobrepõe estilos inline do GSAP, por isso ela só
+   existe enquanto o hero ainda não recebeu .is-ready.) */
+.js .hero:not(.is-ready) .hero__content {
+  opacity: 0;
+  animation: hero-failsafe .4s 3s forwards;
+}
+.no-gsap .hero:not(.is-ready) .hero__content,
+.reduced-motion .hero:not(.is-ready) .hero__content { opacity: 1; animation: none; }
+
+/* ---------- Palco 3D ----------
+   Com .has-3d o hambúrguer é desenhado no canvas fixo #stage (css/stage.css).
+   O palco do hero só reserva o espaço (a foto some) e o texto fica acima
+   do canvas (z-index 2 no contexto da raiz — por isso o .hero não isola). */
+.has-3d .hero__stage { visibility: hidden; }
+.has-3d .hero__inner { z-index: 2; }
+
+/* ---------- Indicador de rolagem ---------- */
+.hero__scroll-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: clamp(.75rem, .5rem + 1svh, 1.5rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .45rem;
+  font-family: var(--font-label);
+  font-size: .85rem;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: var(--fumaca);
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* "Pílula" */
+.hero__scroll-hint::after {
+  content: "";
+  width: 22px;
+  height: 34px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 2px rgba(245, 236, 224, .3);
+}
+/* "Gota" de cheddar descendo dentro da pílula */
+.hero__scroll-hint::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 21px;
+  width: 4px;
+  height: 7px;
+  margin-left: -2px;
+  border-radius: 999px;
+  background: var(--cheddar);
+  animation: hero-scroll-dot 1.8s var(--ease-out) infinite;
+}
+
+/* Sem animação não há "montagem": o convite de rolagem some */
+.no-js .hero__scroll-hint,
+.reduced-motion .hero__scroll-hint { display: none; }
+
+/* ---------- Desktop ---------- */
+@media (min-width: 960px) {
+  .hero__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    align-items: center;
+    gap: clamp(1rem, 3vw, 4rem);
+    padding-block: 2rem 4rem;
+  }
+  .hero__sub { font-size: var(--fs-lead); }
+  .hero__actions { gap: 1rem; }
+  .hero__actions .btn { padding-inline: 1.75rem; font-size: 1rem; }
+  .hero .eyebrow { font-size: 1.05rem; letter-spacing: .22em; margin-bottom: 1rem; }
+  .hero .eyebrow::before { width: 2.25rem; }
+  .hero__stage {
+    height: min(76svh, 680px);
+    min-height: 420px;
+    margin-top: 0;
+  }
+  .hero__glow {
+    left: 72%;
+    top: 55%;
+  }
+}
+
+/* Telas baixas (paisagem no celular): reduz o palco */
+@media (max-height: 560px) and (max-width: 959px) {
+  .hero__stage { height: 240px; }
+  .hero__scroll-hint { display: none; }
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes hero-failsafe { to { opacity: 1; } }
+@keyframes hero-heat {
+  from { opacity: .55; }
+  to   { opacity: 1; }
+}
+@keyframes hero-scroll-dot {
+  0%   { transform: translateY(-6px); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .hero__glow::after,
+  .hero__scroll-hint::before { animation: none; }
+  .js .hero:not(.is-ready) .hero__content,
+  .js:not(.reduced-motion):not(.no-gsap) .hero__fallback { opacity: 1; animation: none; }
+}
+.reduced-motion .hero__glow::after,
+.reduced-motion .hero__scroll-hint::before { animation: none; }

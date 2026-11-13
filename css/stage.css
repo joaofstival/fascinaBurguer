@@ -1,0 +1,117 @@
+/* ==========================================================================
+   Fascina Burguer — stage.css
+   Palco 3D fixo (#stage) + rótulos presos ao 3D (.callout) + Lenis.
+
+   Camadas (contexto de empilhamento da raiz):
+     z 0   fundos e brilhos das seções
+     z 1   #stage (canvas do hambúrguer, transparente)
+     z 2   textos das seções (hero, ciência)
+     z 3   rótulos do 3D
+     z 50  header · z 100 grão
+   ========================================================================== */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .6s linear;
+}
+#stage.is-on { opacity: 1; }
+html:not(.has-3d) #stage { display: none; }
+
+/* ---------- Lenis ---------- */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* ---------- Se o 3D falhar depois de carregado: nada fica escondido ---------- */
+.stage-failed [data-reveal] { opacity: 1 !important; transform: none !important; }
+
+/* ---------- Rótulos presos ao 3D ---------- */
+.callout {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  color: var(--creme);
+  will-change: transform;
+}
+.callout[hidden] { display: none; }
+.callout__wire {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+}
+.callout__wire line {
+  stroke: rgba(255, 182, 39, .85);
+  stroke-width: 1.5;
+  fill: none;
+}
+.callout__dot {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cheddar);
+  background: var(--carvao-900);
+  box-shadow: 0 0 0 4px rgba(13, 11, 10, .45), 0 0 18px rgba(255, 90, 31, .7);
+}
+.callout__dot::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--brasa-hot);
+}
+.callout__text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: .3em;
+  white-space: nowrap;
+}
+.callout--l .callout__text { text-align: right; transform: translate(-12px, -50%); }
+.callout--r .callout__text { text-align: left; transform: translate(12px, -50%); }
+.callout__mask {
+  display: block;
+  overflow: clip;
+  padding: .12em .1em .22em 0;
+  margin: -.12em 0 -.22em;
+}
+.callout__in { display: block; }
+.callout__value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: clamp(1.25rem, .9rem + 1.2vw, 2rem);
+  line-height: 1;
+  letter-spacing: -.01em;
+  color: var(--cheddar);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .8);
+}
+.callout__label {
+  font-family: var(--font-label);
+  font-size: .95rem;
+  line-height: 1.1;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(245, 236, 224, .82);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .9);
+}
+@media (max-width: 959px) {
+  .callout__value { font-size: 1rem; }
+  .callout__dot { left: -4px; top: -4px; width: 8px; height: 8px; }
+}

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fascina Burguer — O Artesanal que Fascina a Cada Mordida</title>
+  <meta name="description" content="Hambúrguer artesanal com blend suculento, queijo derretido e pão brioche selado na manteiga. Peça agora o seu Fascina Burguer.">
+  <meta name="theme-color" content="#0d0b0a">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Fascina Burguer — O Artesanal que Fascina a Cada Mordida">
+  <meta property="og:description" content="Blend suculento, queijo derretido e pão selado na manteiga.">
+  <meta property="og:image" content="assets/img/burger-duplo-close.jpg">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" href="assets/brand/logo.png">
+
+  <!-- Fontes: Fraunces (headlines, serifada robusta) + Manrope (corpo) + Bebas Neue (rótulos) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Imagem do hero carregada com prioridade -->
+  <link rel="preload" as="image" href="assets/img/burger-duplo-close.jpg">
+
+  <!--
+    Palco 3D: se o aparelho tem WebGL e o usuário não pediu movimento reduzido,
+    <html> ganha .has-3d ANTES do CSS/JS das seções (elas mudam de layout com isso).
+  -->
+  <script>
+    (function () {
+      var d = document.documentElement;
+      try {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var c = document.createElement('canvas');
+        var gl = c.getContext('webgl2') || c.getContext('webgl');
+        if (!gl) return;
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+        d.classList.add('has-3d');
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Módulos ES do palco 3D (versões fixas) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+        "lenis": "https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.mjs"
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="css/stage.css">
+  <!-- Estilos: base (tokens + globais) e um arquivo por seção -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/hero.css">
+  <link rel="stylesheet" href="css/science.css">
+  <link rel="stylesheet" href="css/menu.css">
+  <link rel="stylesheet" href="css/kitchen.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body class="no-js">
+  <script>document.body.classList.replace('no-js', 'js');</script>
+
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- Palco 3D fixo: o hambúrguer acompanha a página inteira (js/3d/) -->
+  <canvas id="stage" aria-hidden="true"></canvas>
+
+  <!-- Camada global de granulação (noise) -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ========================= HEADER ========================= -->
+  <header class="site-header" data-header>
+    <div class="site-header__inner container">
+      <a class="site-header__brand" href="#topo" aria-label="Fascina Burguer — voltar ao início">
+        <!-- ASSET: logo com fundo transparente (PNG/SVG) -->
+        <img src="assets/brand/logo.png" alt="" width="56" height="56">
+        <span class="site-header__name">Fascina <small>Burguer</small></span>
+      </a>
+      <nav class="site-nav" aria-label="Principal">
+        <ul>
+          <li><a href="#sabor">O Sabor</a></li>
+          <li><a href="#cardapio">Cardápio</a></li>
+          <li><a href="#bastidores">Bastidores</a></li>
+        </ul>
+      </nav>
+      <a class="btn btn--primary btn--small" href="#pedido" data-order><span>Pedir</span></a>
+    </div>
+  </header>
+
+  <main id="conteudo">
+
+    <!-- ========================= A. HERO ========================= -->
+    <section class="hero" id="topo" aria-labelledby="hero-title" data-section="hero">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="hero__inner container">
+        <div class="hero__content">
+          <p class="eyebrow">Hambúrguer artesanal · feito na chapa</p>
+          <h1 class="hero__title" id="hero-title">
+            <span class="hero__line">O Artesanal</span>
+            <span class="hero__line">que <em>Fascina</em></span>
+            <span class="hero__line">a Cada Mordida</span>
+          </h1>
+          <p class="hero__sub">
+            Blend suculento de carne fresca, queijo derretendo pelas bordas
+            e pão brioche selado na manteiga até dourar. Do jeito que a fome pede.
+          </p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#pedido" data-order>
+              <span>Quero Devorar Agora</span>
+            </a>
+            <a class="btn btn--ghost" href="#cardapio">Ver cardápio</a>
+          </div>
+        </div>
+
+        <!--
+          Espaço reservado ao hambúrguer 3D (desenhado no canvas fixo #stage).
+          A foto abaixo só aparece sem WebGL / sem JS / com movimento reduzido.
+        -->
+        <div class="hero__stage" data-burger-stage aria-hidden="true">
+          <img class="hero__fallback" src="assets/img/burger-duplo-close.jpg" alt="" width="512" height="640">
+        </div>
+      </div>
+      <p class="hero__scroll-hint" aria-hidden="true"><span>Role para explorar</span></p>
+    </section>
+
+    <!-- ========================= B. A CIÊNCIA DO SABOR ========================= -->
+    <section class="science" id="sabor" aria-labelledby="science-title" data-section="science" data-pin>
+      <!-- Palco fixo (sticky) quando há 3D: o hambúrguer "explode" ao lado do texto -->
+      <div class="science__sticky">
+        <!-- Canvas de brasas e fumaça (desenhado por js/science.js) -->
+        <canvas class="science__fx" aria-hidden="true" data-embers></canvas>
+
+        <div class="container science__inner">
+          <header class="section-head">
+            <p class="eyebrow">A Ciência do Sabor</p>
+            <h2 class="section-title" id="science-title">Cada camada tem <em>um motivo</em> para estar ali.</h2>
+          </header>
+
+          <div class="science__grid">
+            <article class="science__item" data-reveal>
+              <div class="science__item-body">
+                <span class="science__num" aria-hidden="true">01</span>
+                <h3>Blend fresco, crosta perfeita</h3>
+                <p>Carne moída no dia, prensada na chapa bem quente até formar aquela crosta caramelizada que trava o suco lá dentro. Por fora, crocante. Por dentro, pura suculência.</p>
+              </div>
+            </article>
+            <article class="science__item" data-reveal>
+              <div class="science__item-body">
+                <span class="science__num" aria-hidden="true">02</span>
+                <h3>Brioche macio e amanteigado</h3>
+                <p>Pão brioche fofinho, selado na manteiga até dourar. Ele abraça o recheio, segura o molho e derrete na boca a cada mordida.</p>
+              </div>
+            </article>
+            <article class="science__item" data-reveal>
+              <div class="science__item-body">
+                <span class="science__num" aria-hidden="true">03</span>
+                <h3>Molhos secretos autorais</h3>
+                <p>Receitas da casa que ninguém sai contando — incluindo a maionese que vicia. Só dá pra descobrir provando.</p>
+              </div>
+            </article>
+          </div>
+
+          <!-- Indicador "01 / 03" (só no modo fixo em telas estreitas) -->
+          <p class="science__count" aria-hidden="true"><span class="science__count-cur" data-science-count>01</span> / 03</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= C. CARDÁPIO INTERATIVO ========================= -->
+    <section class="menu" id="cardapio" aria-labelledby="menu-title" data-section="menu">
+      <div class="menu__pin" data-menu-pin>
+        <header class="section-head container menu__head">
+          <p class="eyebrow">Cardápio</p>
+          <h2 class="section-title" id="menu-title">Escolha a sua <em>Perdição</em></h2>
+          <p class="menu__hint">Role, arraste ou use as setas do teclado para ver todos.</p>
+        </header>
+
+        <!--
+          Trilho horizontal. Em desktop o scroll vertical é convertido em
+          movimento horizontal (js/menu.js). Em telas de toque vira um
+          carrossel com scroll-snap nativo.
+        -->
+        <div class="menu__viewport" data-menu-viewport tabindex="0" role="region" aria-label="Lista de lanches (role na horizontal)">
+          <ul class="menu__track" data-menu-track>
+
+            <!-- ASSET: troque src/alt de cada card pela foto oficial do lanche (proporção 4:5, ~800x1000px, WebP/JPG) -->
+            <li class="menu-card" data-tilt style="--card-accent: var(--cheddar)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/burger-duplo-bacon-ingredientes.jpg" alt="Fascina Clássico: dois blends com duplo cheddar derretido em pão brioche" width="512" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">O queridinho</span>
+                  <h3 class="menu-card__title">Fascina Clássico</h3>
+                  <p class="menu-card__desc">Duplo cheddar escorrendo sobre o blend da casa, no brioche selado na manteiga. A tradição que fez a gente ser Fascina.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Fascina Clássico</span></a>
+            </li>
+
+            <li class="menu-card" data-tilt style="--card-accent: var(--brasa)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/burger-bacon-tomate.jpg" alt="Senhor Bacon: hambúrguer com fatias generosas de bacon crocante" width="360" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">Defumado</span>
+                  <h3 class="menu-card__title">Senhor Bacon</h3>
+                  <p class="menu-card__desc">Bacon em tiras grossas, crocante até estalar, com aquele defumado que invade tudo. Respeite o Senhor.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Senhor Bacon</span></a>
+            </li>
+
+            <li class="menu-card" data-tilt style="--card-accent: var(--brasa-hot)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/burger-duplo-close.jpg" alt="Smash Duplo Fascina: duas carnes smash com queijo derretido e bacon" width="512" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">Pancada de sabor</span>
+                  <h3 class="menu-card__title">Smash Duplo Fascina</h3>
+                  <p class="menu-card__desc">Duas carnes esmagadas na chapa fervendo, bordas rendadas e crocantes, queijo derretendo entre elas. Uma pancada de sabor.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Smash Duplo Fascina</span></a>
+            </li>
+
+            <li class="menu-card" data-tilt style="--card-accent: var(--cheddar)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/burger-segredo-da-fascina.jpg" alt="Segredo da Fascina: blend, cheddar, bacon, tomate e molho da casa" width="360" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">Molho da casa</span>
+                  <h3 class="menu-card__title">Segredo da Fascina</h3>
+                  <p class="menu-card__desc">Blend, cheddar, bacon, tomate fresco e o molho secreto que ninguém conta a receita. Só provando pra entender.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Segredo da Fascina</span></a>
+            </li>
+
+            <li class="menu-card" data-tilt style="--card-accent: var(--brasa)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/burger-rucula-batata-coca.jpg" alt="Combo com hambúrguer, rúcula, batata ondulada e refrigerante" width="512" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">Combo</span>
+                  <h3 class="menu-card__title">Combo Fascina</h3>
+                  <p class="menu-card__desc">Burger com rúcula fresquinha, batata ondulada sequinha e refri gelado. A refeição completa, sem pensar duas vezes.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Combo Fascina</span></a>
+            </li>
+
+            <li class="menu-card" data-tilt style="--card-accent: var(--cheddar)">
+              <article class="menu-card__inner">
+                <figure class="menu-card__media">
+                  <img src="assets/img/milkshake-morango.jpg" alt="Milkshake de morango cremoso" width="360" height="640" loading="lazy" decoding="async">
+                </figure>
+                <div class="menu-card__body">
+                  <span class="menu-card__tag">Pra fechar</span>
+                  <h3 class="menu-card__title">Milkshake de Morango</h3>
+                  <p class="menu-card__desc">Cremoso, gelado e na medida certa de doce. O final feliz que todo burger merece.</p>
+                </div>
+              </article>
+              <a class="btn btn--primary menu-card__cta" href="#pedido" data-order>Pedir essa maravilha<span class="visually-hidden">: Milkshake de Morango</span></a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="menu__progress" aria-hidden="true"><span data-menu-progress></span></div>
+      </div>
+    </section>
+
+    <!-- ========================= D. BASTIDORES ========================= -->
+    <section class="kitchen" id="bastidores" aria-labelledby="kitchen-title" data-section="kitchen">
+      <div class="container">
+        <header class="section-head">
+          <p class="eyebrow">Bastidores</p>
+          <h2 class="section-title" id="kitchen-title">A Mágica <em>Acontece</em></h2>
+        </header>
+
+        <div class="kitchen__grid">
+          <!--
+            ASSET (vídeos): coloque os arquivos em assets/video/ e mantenha os nomes,
+            ou altere os data-src. Recomendado: MP4 H.264 + WebM, 720p, 6–10s em loop,
+            sem áudio, < 2MB cada. Enquanto não existirem, o pôster (foto) é exibido
+            com um zoom lento. js/kitchen.js só carrega/reproduz quando o vídeo entra na tela.
+          -->
+          <figure class="kitchen__clip kitchen__clip--tall">
+            <video muted loop playsinline preload="none"
+                   poster="assets/img/burger-segredo-da-fascina.jpg"
+                   data-lazy-video
+                   aria-label="Queijo derretendo sobre a carne na chapa">
+              <source data-src="assets/video/queijo-derretendo.webm" type="video/webm">
+              <source data-src="assets/video/queijo-derretendo.mp4" type="video/mp4">
+            </video>
+            <figcaption>Cheddar derretendo em tempo real</figcaption>
+          </figure>
+
+          <div class="kitchen__copy" data-reveal>
+            <p class="kitchen__lead">
+              <span class="kitchen__sound">Tsssss.</span>
+              É o primeiro som que você ouve quando a carne encontra a chapa quente.
+            </p>
+            <p>
+              A fumaça sobe, a gordura estala, o cheiro de crosta caramelizada toma conta do salão.
+              O queijo entra no último segundo, só pra derreter no calor da carne. O pão vai pra
+              manteiga e sai dourado. Nada é pré-pronto: cada lanche nasce na hora, na sua frente.
+            </p>
+          </div>
+
+          <figure class="kitchen__clip kitchen__clip--wide">
+            <video muted loop playsinline preload="none"
+                   poster="assets/img/burger-duplo-bacon-ingredientes.jpg"
+                   data-lazy-video
+                   aria-label="Carnes fritando na chapa">
+              <source data-src="assets/video/carne-na-chapa.webm" type="video/webm">
+              <source data-src="assets/video/carne-na-chapa.mp4" type="video/mp4">
+            </video>
+            <figcaption>Smash na chapa a 250&nbsp;°C</figcaption>
+          </figure>
+        </div>
+
+        <!-- Prova social -->
+        <div class="testimonials" aria-labelledby="testimonials-title">
+          <h3 class="testimonials__title" id="testimonials-title">Quem provou, <em>voltou</em></h3>
+          <!-- CONTEÚDO: substitua pelos depoimentos reais (Google, iFood, Instagram) com autorização dos clientes -->
+          <ul class="testimonials__list">
+            <li class="testimonial" data-reveal>
+              <blockquote>
+                <p>“O hambúrguer mais suculento que já comi. O suco escorre até o cotovelo e eu não ligo nem um pouco.”</p>
+              </blockquote>
+              <p class="testimonial__author"><span class="testimonial__stars" aria-label="5 de 5 estrelas">★★★★★</span> Cliente · via iFood</p>
+            </li>
+            <li class="testimonial" data-reveal>
+              <blockquote>
+                <p>“Essa maionese da casa devia ser proibida. Pedi porção extra e ainda passei no pão no final.”</p>
+              </blockquote>
+              <p class="testimonial__author"><span class="testimonial__stars" aria-label="5 de 5 estrelas">★★★★★</span> Cliente · via Google</p>
+            </li>
+            <li class="testimonial" data-reveal>
+              <blockquote>
+                <p>“Smash com a borda crocante do jeito certo e o pão amanteigado. Virou meu pedido de toda sexta.”</p>
+              </blockquote>
+              <p class="testimonial__author"><span class="testimonial__stars" aria-label="5 de 5 estrelas">★★★★★</span> Cliente · via Instagram</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================= E. RODAPÉ / CONVERSÃO FINAL ========================= -->
+  <footer class="finale" id="pedido" aria-labelledby="finale-title" data-section="footer">
+    <!-- Pista do motoboy: js/footer.js anima o ícone cruzando a tela com rastro -->
+    <div class="finale__road" aria-hidden="true" data-moto-road>
+      <div class="finale__moto" data-moto>
+        <svg viewBox="0 0 120 72" width="120" height="72" focusable="false">
+          <!-- Rodas -->
+          <circle cx="24" cy="54" r="13" fill="none" stroke="currentColor" stroke-width="5"/>
+          <circle cx="96" cy="54" r="13" fill="none" stroke="currentColor" stroke-width="5"/>
+          <!-- Quadro -->
+          <path d="M24 54 L46 34 H74 L96 54" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+          <path d="M74 34 L84 18 H94" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+          <!-- Baú de entrega -->
+          <rect x="18" y="12" width="30" height="24" rx="4" fill="var(--brasa)"/>
+          <path d="M26 24 h14" stroke="var(--cheddar)" stroke-width="3" stroke-linecap="round"/>
+          <!-- Piloto -->
+          <circle cx="66" cy="12" r="8" fill="var(--cheddar)"/>
+          <path d="M60 22 L56 36 H72 L78 26" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="container finale__inner">
+      <img class="finale__logo" src="assets/brand/logo.png" alt="Fascina Burguer" width="160" height="160" loading="lazy">
+      <h2 class="finale__title" id="finale-title">A Fome Bateu? <em>A Gente Resolve.</em></h2>
+      <p class="finale__text">
+        <span class="finale__live"><span class="finale__dot" aria-hidden="true"></span>Chapa quente agora</span>
+        Seu pedido sai da chapa direto pro motoboy — e a entrega já está a caminho.
+      </p>
+      <a class="btn btn--primary btn--xl btn--pulse" href="#pedido" data-order>
+        <span>Fazer meu pedido</span>
+      </a>
+    </div>
+
+    <div class="container finale__bottom">
+      <!-- CONTEÚDO: endereço, horário e redes sociais oficiais -->
+      <p>Fascina Burguer · Hambúrguer artesanal</p>
+      <ul class="finale__social">
+        <li><a href="#" data-instagram>Instagram</a></li>
+        <li><a href="#pedido" data-order>Delivery</a></li>
+      </ul>
+      <p><small>© <span data-year>2026</span> Fascina Burguer. Todos os direitos reservados.</small></p>
+    </div>
+  </footer>
+
+  <!-- GSAP + ScrollTrigger (versões fixas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <!-- Módulos de seção (cada um registra FB.modules.<nome>) e orquestrador -->
+  <script src="js/core.js" defer></script>
+  <script src="js/hero.js" defer></script>
+  <script src="js/science.js" defer></script>
+  <script src="js/menu.js" defer></script>
+  <script src="js/kitchen.js" defer></script>
+  <script src="js/footer.js" defer></script>
+  <script src="js/main.js" defer></script>
+
+  <!-- Palco 3D (Three.js + Lenis). Módulo: roda depois dos scripts defer acima. -->
+  <script type="module" src="js/3d/boot.js"></script>
+</body>
+</html>

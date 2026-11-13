@@ -1,0 +1,277 @@
+/* ==========================================================================
+   Fascina Burguer — footer.css
+   Seção E: conversão final. Brilho de chapa quente vindo de baixo,
+   pista do motoboy, CTA pulsando e barra inferior.
+   ========================================================================== */
+
+.finale {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  overflow: clip;              /* a moto sai da tela sem gerar scroll horizontal */
+  text-align: center;
+  padding-top: clamp(2.5rem, 1.5rem + 4vw, 5rem);
+  background: linear-gradient(180deg, var(--carvao-900) 0%, #120d0b 55%, #1c0f09 100%);
+  border-top: 1px solid rgba(255, 255, 255, .04);
+}
+
+/* Brilho de grelha quente subindo do fundo */
+.finale::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: 50%;
+  bottom: -38%;
+  width: max(140%, 900px);
+  aspect-ratio: 2 / 1;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side,
+    rgba(255, 90, 31, .55) 0%,
+    rgba(230, 58, 31, .3) 38%,
+    rgba(168, 32, 13, .12) 62%,
+    transparent 100%);
+  animation: finale-breathe 5s ease-in-out infinite alternate;
+}
+/* Barras da grelha recortando o brilho */
+.finale::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto 0 0;
+  height: 55%;
+  background: repeating-linear-gradient(90deg, transparent 0 54px, rgba(13, 11, 10, .45) 54px 62px);
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent);
+  mask-image: linear-gradient(to top, #000 10%, transparent);
+  pointer-events: none;
+}
+@keyframes finale-breathe {
+  from { opacity: .75; transform: translateX(-50%) scale(.96); }
+  to   { opacity: 1;   transform: translateX(-50%) scale(1.04); }
+}
+
+/* ---------- Pista do motoboy ---------- */
+.finale__road {
+  position: relative;
+  height: 92px;
+  margin-bottom: clamp(1.5rem, 1rem + 3vw, 3.5rem);
+}
+/* Faixa tracejada do asfalto */
+.finale__road::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, rgba(245, 236, 224, .2) 0 28px, transparent 28px 56px);
+}
+.finale__moto {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  right: var(--gutter);        /* estacionada (sem JS / movimento reduzido) */
+  width: clamp(84px, 70px + 3vw, 112px);
+  color: var(--creme);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .6));
+}
+.finale__moto svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform-origin: 20% 75%;   /* roda traseira: eixo do "empinar" */
+}
+/* Modo animado (JS): parte da esquerda e o GSAP controla o x */
+.finale__road.is-animated .finale__moto {
+  left: 0;
+  right: auto;
+  will-change: transform;
+}
+
+/* Rastro (criado por js/footer.js) */
+.finale__trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.finale__speedline {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 182, 39, 0) 45%, var(--cheddar) 85%, var(--brasa-hot) 100%);
+}
+.finale__speedline:nth-child(2) { height: 2px; opacity: .8; }
+.finale__speedline:nth-child(4) { height: 2px; }
+.finale__puff {
+  position: absolute;
+  bottom: 10px;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle at 40% 40%, rgba(255, 182, 39, .85), rgba(230, 58, 31, .45) 55%, transparent 72%);
+}
+
+/* ---------- Conteúdo central ---------- */
+.finale__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.1rem, .8rem + 1vw, 1.75rem);
+  padding-bottom: clamp(4rem, 3rem + 6vw, 8rem);
+}
+.finale__logo {
+  width: clamp(96px, 70px + 8vw, 150px);
+  height: auto;
+  filter: drop-shadow(0 0 30px rgba(255, 90, 31, .35));
+}
+.finale__title {
+  font-size: var(--fs-h2);
+  max-width: 14ch;
+  text-wrap: balance;
+}
+.finale__title em {
+  display: inline-block;
+  padding-right: .06em;
+  background: var(--grad-fogo);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.finale__text {
+  max-width: 34rem;
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  color: rgba(245, 236, 224, .85);
+}
+/* Chip "Chapa quente agora" */
+.finale__live {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: .55rem;
+  margin: 0 auto .9rem;
+  padding: .45rem 1rem .4rem;
+  border-radius: 999px;
+  background: rgba(230, 58, 31, .12);
+  box-shadow: inset 0 0 0 1px rgba(230, 58, 31, .5);
+  font-family: var(--font-label);
+  font-size: 1rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--cheddar);
+  line-height: 1;
+}
+.finale__dot {
+  width: .55rem;
+  height: .55rem;
+  border-radius: 50%;
+  background: var(--brasa-hot);
+  box-shadow: 0 0 10px var(--brasa-hot);
+  animation: finale-blink 1.2s steps(2, jump-none) infinite;
+}
+@keyframes finale-blink {
+  0%   { opacity: 1; }
+  100% { opacity: .2; }
+}
+
+/* ---------- CTA com anel pulsante ----------
+   .btn tem overflow:hidden (necessário para o preenchimento "cheddar").
+   Aqui liberamos o overflow para o anel aparecer e recortamos o
+   preenchimento com clip-path, mantendo o efeito de subir. */
+.btn--pulse { overflow: visible; }
+.btn--pulse.btn--primary::before {
+  transform: none;
+  border-radius: inherit;
+  clip-path: inset(100% 0 0 0 round 999px);
+  transition: clip-path .55s var(--ease-out);
+}
+.btn--pulse.btn--primary:hover::before,
+.btn--pulse.btn--primary:focus-visible::before {
+  clip-path: inset(0 0 0 0 round 999px);
+}
+.btn--pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--brasa-hot), 0 0 24px rgba(255, 90, 31, .6);
+  pointer-events: none;
+  animation: finale-ring 2.2s var(--ease-out) infinite;
+}
+@keyframes finale-ring {
+  0%   { opacity: .9; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.35, 1.7); }
+}
+
+/* ---------- Barra inferior ---------- */
+.finale__bottom {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding-block: 1.75rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+  font-size: var(--fs-small);
+  /* --fumaca sobre fundo sólido --carvao-900 ≈ 5:1 (AA) */
+  color: var(--fumaca);
+  /* fundo sólido de ponta a ponta (garante o contraste sobre o brilho) */
+  background: var(--carvao-900);
+  box-shadow: 0 0 0 100vmax var(--carvao-900);
+  clip-path: inset(0 -100vmax);
+}
+/* Fio incandescente separando a grelha da barra */
+.finale__bottom::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100vw;
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--brasa-hot) 30%, var(--cheddar) 50%, var(--brasa-hot) 70%, transparent);
+  opacity: .6;
+}
+.finale__social {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .25rem 1.5rem;
+}
+.finale__social a {
+  display: inline-block;
+  padding: .5rem .25rem;       /* alvo de toque maior */
+  color: var(--creme);
+  font-weight: 700;
+  text-decoration: none;
+  background: linear-gradient(var(--cheddar), var(--cheddar)) 0 85% / 0 2px no-repeat;
+  transition: background-size .35s var(--ease-out), color .2s;
+}
+.finale__social a:hover,
+.finale__social a:focus-visible {
+  color: var(--cheddar);
+  background-size: 100% 2px;
+}
+
+@media (min-width: 768px) {
+  .finale__bottom {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .finale::before, .finale__dot { animation: none; }
+  .btn--pulse::after { animation: none; opacity: 0; }
+}
+.reduced-motion .finale::before,
+.reduced-motion .finale__dot { animation: none; }
+.reduced-motion .btn--pulse::after { animation: none; opacity: 0; }

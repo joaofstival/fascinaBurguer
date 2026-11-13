@@ -1,0 +1,327 @@
+/* ==========================================================================
+   Fascina Burguer — base.css
+   Tokens de design, reset, tipografia, botões e utilitários globais.
+   Cada seção tem seu próprio arquivo (hero.css, science.css, ...).
+   ========================================================================== */
+
+:root {
+  /* ---------- Cores ---------- */
+  --carvao-900: #0d0b0a;     /* fundo principal */
+  --carvao-800: #151210;     /* superfícies */
+  --carvao-700: #1f1a16;     /* cards */
+  --carvao-600: #2b241e;     /* bordas */
+  --fumaca:     #8a7f74;     /* texto secundário em fundo escuro (contraste ≥ 4.5:1) */
+  --creme:      #f5ece0;     /* texto principal */
+
+  --cheddar:      #ffb627;   /* Amarelo Cheddar — destaque */
+  --cheddar-deep: #f08c00;
+  --brasa:        #e63a1f;   /* Vermelho Brasa — ação */
+  --brasa-hot:    #ff5a1f;
+  --brasa-deep:   #a8200d;
+
+  --grad-fogo: linear-gradient(135deg, var(--cheddar) 0%, var(--brasa-hot) 55%, var(--brasa) 100%);
+
+  /* ---------- Tipografia ---------- */
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-label: "Bebas Neue", "Arial Narrow", sans-serif;
+
+  --fs-hero: clamp(2.75rem, 1.6rem + 6vw, 7rem);
+  --fs-h2:   clamp(2.25rem, 1.4rem + 4vw, 4.75rem);
+  --fs-h3:   clamp(1.35rem, 1.1rem + 1vw, 1.9rem);
+  --fs-lead: clamp(1.05rem, 0.95rem + 0.5vw, 1.3rem);
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+
+  /* ---------- Espaçamento / layout ---------- */
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  --section-pad: clamp(5rem, 3rem + 8vw, 10rem);
+  --container: 1240px;
+  --radius: 18px;
+  --radius-lg: 28px;
+
+  /* ---------- Movimento ---------- */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-elastic: cubic-bezier(.34, 1.56, .64, 1);
+  --dur: .45s;
+
+  /* ---------- Sombras / luz ---------- */
+  --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
+  --glow-brasa: 0 0 40px rgba(230, 58, 31, .45);
+  --glow-cheddar: 0 0 40px rgba(255, 182, 39, .4);
+
+  --header-h: 72px;
+  color-scheme: dark;
+}
+
+/* ---------- Reset enxuto ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: var(--header-h);
+}
+body {
+  min-height: 100dvh;
+  background: var(--carvao-900);
+  /* Textura sutil de "carvão": vinheta quente + gradientes */
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, rgba(230, 58, 31, .08), transparent 60%),
+    radial-gradient(80% 50% at 100% 100%, rgba(255, 182, 39, .05), transparent 60%);
+  color: var(--creme);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+img, video, svg, canvas { display: block; max-width: 100%; }
+img { height: auto; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+ul[class], ol[class] { list-style: none; padding: 0; }
+
+/* Navegação suave por âncora só sem preferência de movimento reduzido */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* ---------- Grain (noise) global ----------
+   SVG fractal noise inline, fixo, sem custo de repaint no scroll. */
+.grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 100;
+  pointer-events: none;
+  opacity: .07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* ---------- Layout ---------- */
+.container {
+  width: min(100% - 2 * var(--gutter), var(--container));
+  margin-inline: auto;
+}
+section { position: relative; }
+
+/* ---------- Tipografia ---------- */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 144;
+}
+h3 { font-weight: 800; font-size: var(--fs-h3); line-height: 1.15; }
+em {
+  font-style: italic;
+  color: var(--cheddar);
+}
+.section-title { font-size: var(--fs-h2); max-width: 16ch; }
+.section-title em {
+  background: var(--grad-fogo);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: .06em; /* evita corte do itálico */
+}
+.section-head { margin-bottom: clamp(2.5rem, 2rem + 3vw, 4.5rem); }
+
+.eyebrow {
+  font-family: var(--font-label);
+  font-size: 1.05rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--cheddar);
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 2.25rem;
+  height: 2px;
+  background: var(--grad-fogo);
+}
+
+/* ---------- Botões ---------- */
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--creme);
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  min-height: 48px;               /* alvo de toque confortável */
+  padding: .9rem 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: .01em;
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--dur) var(--ease-elastic), box-shadow var(--dur) var(--ease-out), color .2s;
+}
+.btn--primary {
+  --btn-bg: var(--brasa);
+  --btn-fg: #fff;
+  box-shadow: 0 10px 30px -10px rgba(230, 58, 31, .8);
+}
+/* Preenchimento "cheddar derretendo" no hover */
+.btn--primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grad-fogo);
+  transform: translateY(101%);
+  border-radius: 40% 40% 0 0 / 30% 30% 0 0;
+  transition: transform .55s var(--ease-out), border-radius .55s var(--ease-out);
+}
+.btn--primary:hover::before,
+.btn--primary:focus-visible::before {
+  transform: translateY(0);
+  border-radius: 0;
+}
+.btn--primary:hover,
+.btn--primary:focus-visible {
+  color: var(--carvao-900);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 16px 40px -10px rgba(255, 90, 31, .9), var(--glow-cheddar);
+}
+.btn--ghost {
+  box-shadow: inset 0 0 0 2px var(--carvao-600);
+}
+.btn--ghost:hover,
+.btn--ghost:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--cheddar);
+  color: var(--cheddar);
+}
+.btn--small { min-height: 40px; padding: .5rem 1.25rem; font-size: .9rem; }
+.btn--xl { min-height: 64px; padding: 1.15rem 2.75rem; font-size: 1.2rem; }
+.btn:active { transform: scale(.97); }
+
+/* ---------- Foco visível (teclado) ---------- */
+:focus-visible {
+  outline: 3px solid var(--cheddar);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.btn:focus-visible { border-radius: 999px; }
+
+/* ---------- Header ---------- */
+.site-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  height: var(--header-h);
+  transition: background-color .35s, backdrop-filter .35s, transform .45s var(--ease-out);
+}
+.site-header.is-scrolled {
+  background: rgba(13, 11, 10, .78);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .05);
+}
+.site-header.is-hidden { transform: translateY(-100%); }
+.site-header__inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.site-header__brand {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  text-decoration: none;
+}
+.site-header__brand img { width: 44px; height: 44px; }
+.site-header__name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: var(--brasa-hot);
+  line-height: 1;
+}
+.site-header__name small {
+  display: block;
+  font-family: var(--font-label);
+  font-size: .78rem;
+  letter-spacing: .3em;
+  color: var(--cheddar-deep);
+}
+.site-nav { display: none; }
+.site-nav ul { display: flex; gap: 2rem; list-style: none; padding: 0; }
+.site-nav a {
+  text-decoration: none;
+  font-weight: 500;
+  font-size: .95rem;
+  position: relative;
+  padding-block: .5rem;
+}
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: .2rem;
+  height: 2px;
+  background: var(--grad-fogo);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform .4s var(--ease-out);
+}
+.site-nav a:hover::after,
+.site-nav a:focus-visible::after { transform: scaleX(1); transform-origin: left; }
+@media (min-width: 768px) {
+  .site-nav { display: block; }
+}
+
+/* ---------- Utilitários ---------- */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link {
+  position: fixed;
+  top: .75rem; left: .75rem;
+  z-index: 200;
+  padding: .75rem 1.25rem;
+  background: var(--cheddar);
+  color: var(--carvao-900);
+  font-weight: 700;
+  border-radius: 999px;
+  transform: translateY(-200%);
+  transition: transform .3s var(--ease-out);
+}
+.skip-link:focus { transform: none; }
+
+/* Estado inicial para elementos revelados via JS (evita flash).
+   Sem JS ou com movimento reduzido, ficam visíveis normalmente. */
+.js [data-reveal] { opacity: 0; }
+.reduced-motion [data-reveal] { opacity: 1 !important; transform: none !important; }
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .js [data-reveal] { opacity: 1; }
+}

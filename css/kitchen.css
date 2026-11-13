@@ -1,0 +1,296 @@
+/* ==========================================================================
+   Fascina Burguer — kitchen.css
+   Seção D "A Mágica Acontece" (bastidores) + depoimentos.
+   Mobile-first. Usa apenas tokens de css/base.css.
+   ========================================================================== */
+
+.kitchen {
+  padding-block: var(--section-pad);
+  /* Calor difuso vindo da "chapa" à esquerda */
+  background:
+    radial-gradient(70% 45% at 10% 30%, rgba(230, 58, 31, .10), transparent 70%),
+    radial-gradient(55% 40% at 95% 75%, rgba(255, 182, 39, .06), transparent 70%);
+}
+
+/* ---------- Grid editorial ---------- */
+.kitchen__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.5rem, 1rem + 2.5vw, 3rem);
+}
+
+/* ---------- Clipes (vídeo / pôster) ---------- */
+.kitchen__clip {
+  position: relative;
+  isolation: isolate;
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-lg);
+  background: var(--carvao-700);
+  box-shadow: var(--shadow-card);
+}
+.kitchen__clip--wide { aspect-ratio: 16 / 10; }
+
+.kitchen__clip video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;          /* vale também para o pôster */
+  transform-origin: 60% 45%;
+}
+
+/* Vinheta quente por cima da mídia */
+.kitchen__clip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 45%, rgba(13, 11, 10, .78) 100%),
+    linear-gradient(180deg, rgba(255, 120, 40, .06) 0%, rgba(168, 32, 13, .22) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+
+/* Legenda em formato de "chip" com indicador REC pulsando */
+.kitchen__clip figcaption {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  max-width: calc(100% - 2rem);
+  padding: .5rem .9rem .42rem 1.85rem;
+  border-radius: 999px;
+  background: rgba(13, 11, 10, .78);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08);
+  font-family: var(--font-label);
+  font-size: .95rem;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--creme);
+}
+.kitchen__clip figcaption::before {
+  content: "REC";
+  color: var(--brasa-hot);
+  padding-right: .55rem;
+  border-right: 1px solid rgba(245, 236, 224, .25);
+}
+/* Ponto vermelho "ao vivo" */
+.kitchen__clip figcaption::after {
+  content: "";
+  position: absolute;
+  left: .85rem;
+  top: 50%;
+  width: .5rem;
+  height: .5rem;
+  margin-top: -.25rem;
+  border-radius: 50%;
+  background: var(--brasa-hot);
+  box-shadow: 0 0 10px var(--brasa);
+  animation: kitchen-rec 1.4s ease-in-out infinite;
+}
+@keyframes kitchen-rec {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .25; transform: scale(.7); }
+}
+
+/* Ken Burns lento enquanto só o pôster está visível
+   (sem vídeo, vídeo com erro ou antes de começar a tocar). */
+.kitchen__clip.is-poster video {
+  animation: kitchen-kenburns 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.kitchen__clip--wide.is-poster video { animation-name: kitchen-kenburns-alt; }
+@keyframes kitchen-kenburns {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to   { transform: scale(1.16) translate3d(-2%, -2%, 0); }
+}
+@keyframes kitchen-kenburns-alt {
+  from { transform: scale(1.14) translate3d(2%, 1%, 0); }
+  to   { transform: scale(1.03) translate3d(-1%, 0, 0); }
+}
+
+/* ---------- Texto ---------- */
+.kitchen__copy {
+  font-size: var(--fs-body);
+  color: rgba(245, 236, 224, .8);
+  max-width: 34rem;
+}
+.kitchen__copy p + p { margin-top: 1.1rem; }
+.kitchen__lead {
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--creme);
+}
+
+/* "Tsssss." — display gigante com shimmer de calor */
+.kitchen__sound,
+.kitchen__sound-char {
+  background: linear-gradient(100deg,
+    var(--cheddar) 0%, var(--brasa-hot) 22%, var(--cheddar) 42%,
+    #fff1cf 50%, var(--cheddar) 58%, var(--brasa) 80%, var(--cheddar) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: kitchen-shimmer 4.5s linear infinite;
+}
+.kitchen__sound {
+  display: block;
+  width: fit-content;
+  margin-bottom: .3em;
+  padding-right: .12em;       /* evita corte do itálico */
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(3.5rem, 2rem + 8vw, 8rem);
+  line-height: .95;
+  letter-spacing: -.03em;
+  filter: drop-shadow(0 6px 28px rgba(255, 90, 31, .3));
+}
+/* Quando o JS divide em letras, o gradiente vai para cada letra */
+.kitchen__sound.is-split { background: none; animation: none; }
+.kitchen__sound-char {
+  display: inline-block;
+  padding-right: .02em;
+  animation-delay: calc(var(--i, 0) * -.18s);
+}
+@keyframes kitchen-shimmer {
+  from { background-position: 100% 50%; }
+  to   { background-position: -150% 50%; }
+}
+
+/* ---------- Depoimentos ---------- */
+.testimonials { margin-top: clamp(4.5rem, 3rem + 6vw, 8.5rem); }
+.testimonials__title {
+  font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3.25rem);
+  margin-bottom: clamp(2rem, 1.5rem + 2vw, 3.25rem);
+}
+.testimonials__list {
+  display: grid;
+  gap: 1.25rem;
+}
+.testimonial {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2.75rem 1.5rem 1.5rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, var(--carvao-700), var(--carvao-800));
+  border: 1px solid var(--carvao-600);
+  box-shadow: var(--shadow-card);
+  /* Inclinação de repouso via propriedades independentes
+     (não conflitam com o transform animado pelo GSAP). */
+  transition: translate .45s var(--ease-out), rotate .45s var(--ease-out), border-color .3s;
+}
+/* Aspas gigantes */
+.testimonial::before {
+  content: "\201C";
+  position: absolute;
+  top: .02em;
+  right: .14em;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 8rem;
+  line-height: .8;
+  color: var(--brasa);
+  opacity: .32;
+  pointer-events: none;
+}
+.testimonial blockquote {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  line-height: 1.4;
+  color: var(--creme);
+}
+.testimonial__author {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .75rem;
+  font-size: var(--fs-small);
+  /* creme a 62% sobre --carvao-700 ≈ 6.4:1 (o --fumaca puro ficaria ~4.4:1 no card) */
+  color: rgba(245, 236, 224, .62);
+}
+.testimonial__stars {
+  color: var(--cheddar);
+  font-size: 1.05rem;
+  letter-spacing: .15em;
+  text-shadow: 0 0 12px rgba(255, 182, 39, .35);
+}
+/* Mobile: pilha levemente desencontrada */
+.testimonial:nth-child(odd)  { margin-right: 1rem; }
+.testimonial:nth-child(even) { margin-left: 1rem; }
+
+@media (hover: hover) {
+  .testimonial:hover {
+    translate: 0 -6px;
+    rotate: 0deg;
+    border-color: rgba(255, 182, 39, .35);
+  }
+}
+
+/* ---------- Tablet / desktop ---------- */
+@media (min-width: 900px) {
+  .kitchen__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+    column-gap: clamp(1rem, .5rem + 1.5vw, 2rem);
+    row-gap: clamp(2rem, 1rem + 2vw, 3.5rem);
+  }
+  .kitchen__clip--tall {
+    grid-column: 1 / 6;
+    grid-row: 1 / 3;
+    align-self: start;
+  }
+  .kitchen__copy {
+    grid-column: 7 / 13;
+    grid-row: 1;
+    align-self: center;
+    padding-block: 1rem;
+  }
+  /* O clipe largo "invade" uma coluna do alto — recorte editorial */
+  .kitchen__clip--wide {
+    grid-column: 5 / 13;
+    grid-row: 2;
+    z-index: 2;
+    box-shadow: 0 0 0 8px var(--carvao-900), var(--shadow-card);
+  }
+
+  .testimonials__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: clamp(1.25rem, .5rem + 1.5vw, 2rem);
+  }
+  .testimonial { margin: 0; }
+  .testimonial:nth-child(1) { rotate: -1.2deg; }
+  .testimonial:nth-child(2) { rotate: .9deg; margin-top: 3.5rem; }
+  .testimonial:nth-child(3) { rotate: -.5deg; margin-top: 1.5rem; }
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .kitchen__clip.is-poster video,
+  .kitchen__sound, .kitchen__sound-char,
+  .kitchen__clip figcaption::after { animation: none; }
+}
+.reduced-motion .kitchen__clip.is-poster video,
+.reduced-motion .kitchen__sound,
+.reduced-motion .kitchen__sound-char,
+.reduced-motion .kitchen__clip figcaption::after { animation: none; }

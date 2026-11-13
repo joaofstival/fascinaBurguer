@@ -1,0 +1,350 @@
+/* ==========================================================================
+   Fascina Burguer — menu.css
+   Seção C · "Escolha a sua Perdição" — cardápio em palco iluminado.
+
+   Camadas visuais:
+   - .menu__pin::before  → holofote (spotlight) vindo de cima
+   - .menu__viewport     → piso do palco (brilho quente na base)
+   - .menu-card::after   → reflexo/sombra colorida de cada card no "chão"
+   - .menu-card__inner::before → "explosão de cor" (--card-accent) a partir do cursor
+   - .menu-card__inner::after  → reflexo de luz (glare) guiado por --mx/--my
+
+   Estado base (sem JS / movimento reduzido / toque): carrossel horizontal
+   nativo com scroll-snap. O modo "pinado" (scroll vertical → horizontal)
+   é ativado por js/menu.js adicionando .is-pinned-mode na seção.
+   ========================================================================== */
+
+.menu {
+  /* Largura do card: cabe no celular e não passa de 360px */
+  --card-w: min(78vw, 360px);
+  /* Recuo lateral que alinha o trilho com o .container */
+  --menu-pad: max(var(--gutter), (100% - var(--container)) / 2);
+  padding-block: var(--section-pad);
+}
+
+/* ---------- Palco + holofote ---------- */
+.menu__pin {
+  position: relative;
+  isolation: isolate;
+}
+.menu__pin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    /* facho de luz cônico descendo do teto */
+    conic-gradient(from 0deg at 50% -25%,
+      transparent 152deg,
+      rgba(255, 214, 150, .05) 166deg,
+      rgba(255, 214, 150, .09) 180deg,
+      rgba(255, 214, 150, .05) 194deg,
+      transparent 208deg),
+    /* halo quente do refletor */
+    radial-gradient(55% 40% at 50% 0%, rgba(255, 182, 39, .16), transparent 70%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+}
+
+.menu__hint {
+  margin-top: .9rem;
+  color: var(--fumaca);
+  font-size: var(--fs-small);
+}
+
+/* ---------- Viewport (scroller horizontal nativo) ---------- */
+.menu__viewport {
+  position: relative;
+  container-type: inline-size; /* referência de 100cqi para o trilho */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--menu-pad);
+  /* espaço para escala/tilt e para o reflexo no chão não serem cortados */
+  padding-block: 1.5rem 3rem;
+  /* barra de rolagem escondida, mas continua rolável */
+  scrollbar-width: none;
+  /* piso do palco: brilho de brasa na base (fica parado, não rola) */
+  background:
+    radial-gradient(70% 28% at 50% 100%, rgba(230, 58, 31, .14), transparent 70%),
+    linear-gradient(to top, rgba(255, 182, 39, .035), transparent 35%);
+}
+.menu__viewport::-webkit-scrollbar { display: none; }
+.menu__viewport:focus-visible {
+  outline-offset: -3px;
+  border-radius: var(--radius);
+}
+
+.menu .menu__track { /* .menu na frente: vence o reset ul[class] { padding: 0 } */
+  position: relative; /* offsetParent dos cards (medições no JS) */
+  display: flex;
+  gap: clamp(1rem, .6rem + 1.6vw, 2rem);
+  width: max-content; /* largura real do conteúdo → distância do scroll horizontal */
+  /* % aqui não funciona (largura max-content → % cíclico vira 0), então
+     usamos unidades do container (.menu__viewport), com fallback em vw */
+  padding-inline: max(var(--gutter), (100vw - var(--container)) / 2);
+  padding-inline: max(var(--gutter), (100cqi - var(--container)) / 2);
+  margin: 0;
+}
+
+/* ---------- Card ---------- */
+.menu-card {
+  --mx: 50%;
+  --my: 35%;
+  --card-accent: var(--cheddar);
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 var(--card-w);
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  perspective: 900px;           /* profundidade do tilt 3D */
+  transform-style: preserve-3d;
+  scroll-snap-align: center;
+}
+@media (min-width: 768px) {
+  .menu-card { scroll-snap-align: start; }
+}
+
+/* Reflexo colorido do card no chão do palco */
+.menu-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 8%;
+  right: 8%;
+  bottom: -2rem;
+  height: 2.75rem;
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 50%,
+    color-mix(in srgb, var(--card-accent) 45%, transparent),
+    transparent 72%);
+  opacity: .45;
+  transition: opacity .6s var(--ease-out);
+}
+
+.menu-card__inner {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--carvao-700);
+  box-shadow: var(--shadow-card);
+  transition: scale .6s var(--ease-out);
+}
+
+/* Foto */
+.menu-card__media {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  z-index: 0;
+}
+.menu-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  scale: 1.08;  /* folga para o parallax interno não mostrar bordas */
+  transition: scale .8s var(--ease-out);
+}
+/* Véu escuro dos cards fora do "foco do holofote" (só com JS ativo) */
+.menu-card__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--carvao-900);
+  opacity: 0;
+  transition: opacity .6s var(--ease-out);
+}
+
+/* Explosão de cor: círculo do --card-accent nascendo no ponto do cursor */
+.menu-card__inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at var(--mx) var(--my),
+      color-mix(in srgb, var(--card-accent) 85%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent) 40%, transparent) 38%,
+      transparent 72%);
+  mix-blend-mode: overlay;
+  clip-path: circle(0% at var(--mx) var(--my));
+  opacity: 0;
+  transition: clip-path .7s var(--ease-out), opacity .45s var(--ease-out);
+}
+
+/* Glare (reflexo de luz) + borda acesa */
+.menu-card__inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 245, 225, .32), transparent 45%);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--card-accent) 70%, transparent);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity .4s var(--ease-out);
+}
+
+/* Texto sobre a foto */
+.menu-card__body {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto auto 0fr; /* descrição recolhida */
+  padding: 4.5rem 1.25rem 1.25rem;
+  background: linear-gradient(to top,
+    rgba(13, 11, 10, .96) 0%,
+    rgba(13, 11, 10, .78) 55%,
+    transparent 100%);
+  transition: grid-template-rows .55s var(--ease-out);
+}
+.menu-card__tag {
+  justify-self: start;
+  margin-bottom: .55rem;
+  padding: .2rem .7rem .1rem;
+  border-radius: 999px;
+  background: var(--card-accent);
+  color: var(--carvao-900);
+  font-family: var(--font-label);
+  font-size: .95rem;
+  letter-spacing: .14em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.menu-card__title {
+  font-size: clamp(1.25rem, 1.05rem + .8vw, 1.65rem);
+  color: var(--creme);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .6);
+}
+.menu-card__desc {
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--fs-small);
+  line-height: 1.55;
+  color: rgba(245, 236, 224, .9);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .45s var(--ease-out), transform .55s var(--ease-out);
+}
+.menu-card__desc::before {
+  content: "";
+  display: block;
+  height: .6rem; /* respiro acima do texto, dentro da área animada */
+}
+
+/* CTA abaixo do card */
+.menu-card__cta {
+  align-self: stretch;
+  text-align: center;
+}
+
+/* ---------- Hover / foco: explosão de cor + descrição ---------- */
+.menu-card:hover .menu-card__inner::before,
+.menu-card:focus-within .menu-card__inner::before {
+  clip-path: circle(150% at var(--mx) var(--my));
+  opacity: 1;
+}
+.menu-card:hover .menu-card__inner::after,
+.menu-card:focus-within .menu-card__inner::after { opacity: 1; }
+.menu-card:hover .menu-card__body,
+.menu-card:focus-within .menu-card__body { grid-template-rows: auto auto 1fr; }
+.menu-card:hover .menu-card__desc,
+.menu-card:focus-within .menu-card__desc {
+  opacity: 1;
+  transform: none;
+}
+.menu-card:hover .menu-card__media img,
+.menu-card:focus-within .menu-card__media img { scale: 1.14; }
+.menu-card:hover::after,
+.menu-card:focus-within::after { opacity: 1; }
+
+/* ---------- Toque: descrição sempre visível, sem hover ---------- */
+.is-touch .menu-card__body { grid-template-rows: auto auto 1fr; }
+.is-touch .menu-card__desc { opacity: 1; transform: none; }
+@media (hover: none), (pointer: coarse) {
+  .menu-card__body { grid-template-rows: auto auto 1fr; }
+  .menu-card__desc { opacity: 1; transform: none; }
+}
+/* No toque, o card centralizado ganha a explosão de cor */
+.is-touch .menu-card.is-lit .menu-card__inner::before {
+  clip-path: circle(150% at 50% 85%);
+  opacity: .9;
+}
+
+/* ---------- Palco ativo (JS): card no centro aceso, demais na penumbra ---------- */
+.menu.is-staged .menu-card .menu-card__media::after { opacity: .42; }
+.menu.is-staged .menu-card.is-lit .menu-card__media::after,
+.menu.is-staged .menu-card:hover .menu-card__media::after,
+.menu.is-staged .menu-card:focus-within .menu-card__media::after { opacity: 0; }
+.menu.is-staged .menu-card.is-lit .menu-card__inner { scale: 1.04; }
+.menu.is-staged .menu-card.is-lit::after { opacity: 1; }
+
+/* ---------- Barra de progresso (fogo) ---------- */
+.menu__progress {
+  width: min(100% - 2 * var(--gutter), var(--container));
+  height: 3px;
+  margin: .5rem auto 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+.menu__progress > span {
+  display: block;
+  height: 100%;
+  background: var(--grad-fogo);
+  box-shadow: var(--glow-brasa);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+/* Sem JS/GSAP a barra não teria como se mover */
+.no-js .menu__progress,
+.no-gsap .menu__progress { display: none; }
+
+/* ---------- Modo pinado (desktop + mouse + movimento liberado) ---------- */
+.menu.is-pinned-mode {
+  padding-block: 0;
+  /* card limitado pela altura da tela para caber tudo pinado */
+  --card-w: clamp(200px, calc((100vh - 370px) * .8), 360px);
+}
+.menu.is-pinned-mode .menu__pin {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: var(--header-h) 1.25rem;
+}
+.menu.is-pinned-mode .menu__head { margin-bottom: clamp(.75rem, 3vh, 2rem); }
+.menu.is-pinned-mode .section-title {
+  max-width: none;
+  font-size: clamp(2rem, 1rem + 2.6vw, 3.75rem);
+}
+.menu.is-pinned-mode .menu__viewport {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+.menu.is-pinned-mode .menu__track { will-change: transform; }
+.menu.is-pinned-mode .menu-card { scroll-snap-align: none; }
+
+/* Tilt ativo: avisa o navegador sobre transform frequente */
+.menu.has-tilt .menu-card__inner,
+.menu.has-tilt .menu-card__media img { will-change: transform; }
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .menu-card__media img { scale: 1; }
+  .menu-card:hover .menu-card__media img,
+  .menu-card:focus-within .menu-card__media img { scale: 1; }
+  .menu.is-staged .menu-card.is-lit .menu-card__inner { scale: 1; }
+}
