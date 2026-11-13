@@ -9,7 +9,7 @@ const SINK = 0.06   // u de afundada ao pousar
 const FALL = 0.5    // s de queda
 
 export function prepareIntro(stage, { mobile = false } = {}) {
-  const h = mobile ? 9 : 6
+  const h = mobile ? 3 : 6 // celular: queda curta, sem passar por trás do texto
   for (const l of stage.layers) { l.drop = h; l.visible = false }
 }
 

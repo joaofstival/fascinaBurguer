@@ -13,6 +13,7 @@
 // explode = 1 ele vai a ~8,5 u (centro em y ≈ 4,3).
 // =============================================================================
 import { DEFAULT_POSE } from './stage.js'
+import { GAP } from './burger.js'
 
 const BASE = { ...DEFAULT_POSE }
 
@@ -50,24 +51,120 @@ const DESKTOP = [
 ]
 
 /* ───────────────────────────── CELULAR ───────────────────────────── */
-// Retrato: texto em cima, lanche na metade de baixo.
+// Celular: o lanche COMEÇA parado no hero, enquadrado no espaço reservado
+// [data-burger-stage] (abaixo dos textos). Ao rolar até a seção 02 ele faz a
+// mesma coreografia do desktop (camadas soltas), com o texto no topo.
 const HERO_M = {
-  ...BASE, camX: 5.2, camY: 7.2, camZ: 14, tgtX: 0, tgtY: 1.45, tgtZ: 0, fov: 40,
-  rotY: -0.35, sway: 0.25, explode: 0, glow: 0.7, steam: 1, shiftX: 0, shiftY: -0.2, scale: 1,
+  ...BASE, camX: 5.2, camY: 6.4, camZ: 14, tgtX: 0, tgtY: 1.5, tgtZ: 0, fov: 35,
+  rotY: -0.35, sway: 0, explode: 0, glow: 0.7, steam: 0.7, shiftX: 0, shiftY: 0, scale: 1,
 }
 const INSIDE_M = {
   camX: -3, camY: 10, camZ: 20.5, tgtX: 0, tgtY: 4.3, tgtZ: 0, fov: 40,
   rotY: 0.2, sway: 0, explode: 1, glow: 0.45, steam: 0, shiftX: -0.13, shiftY: -0.2,
 }
-const MOBILE = [
-  { at: { sel: '#topo', p: 0 }, pose: HERO_M },
-  { at: { sel: '#sabor', p: 0, off: -0.4 }, pose: { sway: 0, steam: 0.2, rotY: -0.1 } },
-  { at: { sel: '#sabor', p: 0.12 }, pose: INSIDE_M },
-  { at: { sel: '#sabor', p: 0.88 }, pose: { ...dolly(INSIDE_M, 0.95), rotY: 0.2 + 0.22, explode: 1.06 } },
-  { at: { sel: '#sabor', p: 1 }, pose: {
-    ...HERO_M, rotY: 0.55, sway: 0.15, explode: 0, scale: 0.8, shiftY: -0.1, glow: 0.5,
-  }, follow: true },
-]
+function mobileTable(hero, inside = INSIDE_M) {
+  return [
+    // 01 hero — parado no espaço do hero (pose medida em fitHero)
+    { at: { sel: '#topo', p: 0 }, pose: hero },
+    // aproximação: a seção 02 sobe e o vapor esfria
+    { at: { sel: '#sabor', p: 0, off: -0.4 }, pose: { steam: 0.2, rotY: -0.1 } },
+    // 02 a ciência do sabor — camadas soltas na vertical, abaixo do texto
+    { at: { sel: '#sabor', p: 0.12 }, pose: inside },
+    { at: { sel: '#sabor', p: 0.88 }, pose: { ...dolly(inside, INSIDE_END), rotY: 0.2 + 0.22, explode: 1.06 } },
+    // recompõe, encolhe e sobe junto com a página
+    { at: { sel: '#sabor', p: 1 }, pose: {
+      ...HERO_M, rotY: 0.55, sway: 0.15, explode: 0, scale: 0.8, shiftY: -0.1, glow: 0.5,
+    }, follow: true },
+  ]
+}
+const INSIDE_END = 0.95 // aproximação no fim da leitura (dolly)
+
+// Contorno do lanche (cilindro de raio r, do chão até `top`)
+function hull(top, r) {
+  const pts = []
+  for (let a = 0; a < 16; a++) {
+    const th = (a / 16) * Math.PI * 2
+    for (const y of [0, top]) pts.push([Math.cos(th) * r, y, Math.sin(th) * r])
+  }
+  return pts
+}
+// Montado: alface/bacon passam um pouco do pão
+const HULL = hull(2.96, 1.85)
+
+// Ajusta a distância da câmera e o deslocamento para o contorno `pts`
+// caber em `box` (px na tela, com a página/pino parados). `place(b)` diz
+// onde pôr o centro: { x, y } em px.
+function fitPose(stage, base, pts, { maxW, maxH, place }) {
+  const P = stage.pose
+  const pt = { x: 0, y: 0 }
+  const v = { x: 0, y: 0, z: 0 }
+  const write = (p) => { for (let i = 0; i < FIELDS.length; i++) P[FIELDS[i]] = p[FIELDS[i]] }
+  function bbox() {
+    stage.applyPose()
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+    for (const [x, y, z] of pts) {
+      v.x = x; v.y = y; v.z = z
+      stage.project(v, pt)
+      x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x)
+      y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y)
+    }
+    return { w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 }
+  }
+  const pose = { ...BASE, ...base, scrollY: 0 }
+  // 1) distância da câmera para caber
+  for (let i = 0; i < 3; i++) {
+    write(pose)
+    const b = bbox()
+    if (!(b.w > 0 && b.h > 0)) break
+    const k = Math.min(maxW / b.w, maxH / b.h)
+    Object.assign(pose, dolly(pose, 1 / k))
+  }
+  // 2) desloca o enquadramento para o centro pedido
+  write(pose)
+  const b = bbox()
+  const c = place(b)
+  pose.shiftX += (c.x - b.cx) / stage.width
+  pose.shiftY += (b.cy - c.y) / stage.height
+  return pose
+}
+
+// Pose do hero no celular: encaixa o lanche no espaço [data-burger-stage]
+// com a página no topo. null se o espaço não existe.
+function fitHero(stage) {
+  const el = document.querySelector('[data-burger-stage]')
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  const top = r.top + scrollY // topo do espaço no documento
+  // (folga p/ vapor/sombra)
+  return fitPose(stage, HERO_M, HULL, {
+    maxW: r.width * 0.86, maxH: r.height * 0.8,
+    place: () => ({ x: r.left + r.width / 2, y: top + r.height * 0.54 }),
+  })
+}
+
+// Pose "por dentro" no celular: as camadas soltas cabem no espaço ABAIXO do
+// texto da seção 02 (que fica preso no topo), sem passar por cima dele.
+function fitInside(stage) {
+  const sticky = document.querySelector('#sabor .science__sticky')
+  const inner = document.querySelector('#sabor .science__inner')
+  const top0 = stage.burger.byName && stage.burger.byName['bun-top']
+  if (!sticky || !inner || !top0) return null
+  const textBottom = inner.getBoundingClientRect().bottom - sticky.getBoundingClientRect().top
+  const W = stage.width
+  const H = Math.min(stage.height, sticky.offsetHeight || innerHeight)
+  const gapTop = 22, gapBottom = 10
+  const room = H - textBottom - gapTop - gapBottom
+  if (room < 80) return null
+  // pior caso: fim da leitura (explode 1.06 e câmera 5% mais perto)
+  const explode = 1.06
+  const pts = hull(top0.y + top0.index * GAP * explode + 1.15, 1.95)
+  const end = fitPose(stage, { ...INSIDE_M, explode, rotY: 0.2 + 0.22 }, pts, {
+    maxW: W * 0.6, maxH: room,
+    place: (b) => ({ x: W * 0.38, y: textBottom + gapTop + room / 2 }),
+  })
+  // volta para a pose do começo da leitura (mesma moldura, 5% mais longe)
+  return { ...INSIDE_M, ...dolly(end, 1 / INSIDE_END), shiftX: end.shiftX, shiftY: end.shiftY }
+}
 
 const FIELDS = Object.keys(BASE)
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
@@ -75,14 +172,17 @@ const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t)
 
 export function createTrack(stage, { mobile = false, reduced = false } = {}) {
   // Resolve a tabela em poses cheias (herança campo a campo)
-  const table = mobile ? MOBILE : DESKTOP
-  const rows = []
-  let prev = { ...BASE }
-  for (const r of table) {
-    const full = { ...prev, ...r.pose }
-    rows.push({ at: r.at, pose: full, follow: !!r.follow, px: 0 })
-    prev = full
+  function resolve(table) {
+    const out = []
+    let prev = { ...BASE }
+    for (const r of table) {
+      const full = { ...prev, ...r.pose }
+      out.push({ at: r.at, pose: full, follow: !!r.follow, px: 0 })
+      prev = full
+    }
+    return out
   }
+  let rows = resolve(mobile ? mobileTable(HERO_M) : DESKTOP)
 
   const geo = new Map()
   let vh = innerHeight
@@ -113,6 +213,12 @@ export function createTrack(stage, { mobile = false, reduced = false } = {}) {
   function measure() {
     geo.clear()
     vh = innerHeight
+    if (mobile) {
+      // o enquadramento do hero depende do layout → recalcula a tabela
+      const hero = fitHero(stage)
+      const inside = fitInside(stage) || INSIDE_M
+      if (hero) rows = api.rows = resolve(mobileTable(hero, inside))
+    }
     let last = 0
     for (const r of rows) {
       const px = toPx(r.at)

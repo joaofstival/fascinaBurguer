@@ -9,7 +9,7 @@ const root = document.documentElement
 
 function fallback(err) {
   console.warn('[Fascina] palco 3D indisponível — usando o modo sem 3D.', err)
-  root.classList.remove('has-3d')
+  root.classList.remove('has-3d', 'has-pin')
   root.classList.add('stage-failed')
   const c = document.getElementById('stage')
   if (c) c.remove()

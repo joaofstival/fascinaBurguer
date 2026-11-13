@@ -31,8 +31,9 @@ export function createStage({ canvas, mobile = false } = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.0
   renderer.shadowMap.enabled = shadows
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
-  const dpr = () => Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75)
+  // Celular: sombra PCF simples (a "soft" custa caro na GPU do aparelho)
+  renderer.shadowMap.type = mobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap
+  const dpr = () => Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.75)
 
   const scene = new THREE.Scene()
   const pmrem = new THREE.PMREMGenerator(renderer)
@@ -47,11 +48,11 @@ export function createStage({ canvas, mobile = false } = {}) {
   key.position.set(-4, 9, 6)
   if (shadows) {
     key.castShadow = true
-    const s = mobile ? 1024 : 2048
+    const s = mobile ? 512 : 2048
     key.shadow.mapSize.set(s, s)
     const c = key.shadow.camera
     c.left = -6; c.right = 6; c.top = 10; c.bottom = -4; c.near = 1; c.far = 30
-    key.shadow.radius = 5
+    key.shadow.radius = mobile ? 2 : 5
     key.shadow.bias = -0.0005
     key.shadow.normalBias = 0.02
   }
@@ -71,7 +72,7 @@ export function createStage({ canvas, mobile = false } = {}) {
   under.position.set(0, -1.2, 1.4)
   scene.add(under)
 
-  const burger = buildBurger({ shadows })
+  const burger = buildBurger({ shadows, mobile })
   scene.add(burger.group)
   key.target = burger.group
 
@@ -96,19 +97,36 @@ export function createStage({ canvas, mobile = false } = {}) {
     g.rotation.set(pose.rotX + tilt.y * 0.08, pose.rotY + sway + tilt.x * 0.28, pose.rotZ)
     g.position.set(0, pose.posY, 0)
     g.scale.setScalar(pose.scale)
-    under.intensity = pose.glow * 14
+    under.intensity = pose.glow * 5 // calor da chapa: sugestão, não lâmpada
     g.updateMatrixWorld()
     camera.updateMatrixWorld()
   }
 
-  function size() {
-    W = window.innerWidth
-    H = window.innerHeight
-    renderer.setPixelRatio(dpr())
-    renderer.setSize(W, H, false)
-    applyPose()
+  // Tamanho do palco em px. No celular a barra de endereço aparece/some ao
+  // rolar e muda innerHeight o tempo todo: o canvas fica com a MAIOR altura
+  // vista para a largura atual (≈ 100lvh) e com tamanho CSS fixo em px —
+  // assim o lanche nunca estica/achata nem "pula" durante a rolagem.
+  let lastW = 0
+  function viewport() {
+    const w = window.innerWidth
+    const h = Math.max(window.innerHeight, document.documentElement.clientHeight)
+    if (!mobile) return [w, h]
+    if (w !== lastW) { lastW = w; return [w, h] } // girou o aparelho / mudou a largura
+    return [w, Math.max(H, h)]
   }
-  size()
+
+  // devolve true se o tamanho mudou de verdade
+  function size(force = false) {
+    const [w, h] = viewport()
+    if (!force && w === W && h === H) return false
+    W = w
+    H = h
+    renderer.setPixelRatio(dpr())
+    renderer.setSize(W, H, true) // true: escreve width/height em px no style
+    applyPose()
+    return true
+  }
+  size(true)
 
   // Projeta um ponto local do lanche para px na tela
   const tmp = new THREE.Vector3()
@@ -182,8 +200,10 @@ export function createStage({ canvas, mobile = false } = {}) {
 
   return {
     pose, renderer, scene, camera, burger, layers: burger.layers,
-    frame, compile, size, project, anchor, pick, hover, setTilt, setVisible,
+    frame, compile, size, project, anchor, pick, hover, setTilt, setVisible, applyPose,
     get hovered() { return hovered },
+    get width() { return W },
+    get height() { return H },
     fields: FIELDS,
   }
 }

@@ -66,19 +66,6 @@ function roundedProfile(r, h, b, steps = 6) {
   return pts
 }
 
-// Degradê vertical por vértice (base → topo)
-function paintVertical(geo, y0, y1, c0, c1) {
-  const pos = geo.attributes.position
-  const colors = new Float32Array(pos.count * 3)
-  const a = new THREE.Color(c0), b = new THREE.Color(c1), c = new THREE.Color()
-  for (let i = 0; i < pos.count; i++) {
-    const t = Math.min(1, Math.max(0, (pos.getY(i) - y0) / (y1 - y0)))
-    c.copy(a).lerp(b, Math.pow(t, 0.8))
-    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-}
-
 // Borda levemente irregular — aspecto artesanal
 function wobbleRadius(geo, amount, seed) {
   const pos = geo.attributes.position
@@ -92,80 +79,293 @@ function wobbleRadius(geo, amount, seed) {
   geo.computeVertexNormals()
 }
 
-// UV planar (x/z): evita os "raios" do UV radial do Lathe no topo/fundo
-function planarUV(geo, k = 0.32) {
-  const pos = geo.attributes.position, uv = geo.attributes.uv
+// UV "por face": topo/fundo em projeção planar (x/z) e lateral cilíndrica
+// (ângulo × altura) — a textura não estica em listras na borda do disco
+function capSideUV(geo, k = 0.32) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv
   for (let i = 0; i < pos.count; i++) {
-    uv.setXY(i, pos.getX(i) * k + 0.5 + pos.getY(i) * 0.4, pos.getZ(i) * k + 0.5)
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    if (Math.abs(nor.getY(i)) > 0.55) uv.setXY(i, x * k + 0.5, z * k + 0.5)
+    else {
+      const th = Math.atan2(z, x)
+      uv.setXY(i, (th + Math.PI) * Math.hypot(x, z) * k * 0.5, y * k * 1.6 + 0.37)
+    }
   }
+}
+
+// Ruído suave 3D (value noise + fbm) para relevo e manchas "de verdade"
+function makeNoise(seed = 1) {
+  const hash = (x, y, z) => {
+    let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(z, 1274126177) ^ Math.imul(seed, 2246822519)
+    h = Math.imul(h ^ (h >>> 13), 1274126177)
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295
+  }
+  const sm = (t) => t * t * (3 - 2 * t)
+  const lerp = (a, b, t) => a + (b - a) * t
+  function n3(x, y, z) {
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z)
+    const xf = sm(x - xi), yf = sm(y - yi), zf = sm(z - zi)
+    const c = (dx, dy, dz) => hash(xi + dx, yi + dy, zi + dz)
+    return lerp(
+      lerp(lerp(c(0, 0, 0), c(1, 0, 0), xf), lerp(c(0, 1, 0), c(1, 1, 0), xf), yf),
+      lerp(lerp(c(0, 0, 1), c(1, 0, 1), xf), lerp(c(0, 1, 1), c(1, 1, 1), xf), yf),
+      zf,
+    ) * 2 - 1
+  }
+  return (x, y, z, oct = 3) => {
+    let a = 0, amp = 0.5, f = 1
+    for (let i = 0; i < oct; i++) { a += n3(x * f, y * f, z * f) * amp; f *= 2.03; amp *= 0.5 }
+    return a
+  }
+}
+
+// Empurra cada vértice para fora (raio) e em y conforme o ruído
+function displace(geo, noise, { scale = 2, radial = 0, vertical = 0, oct = 3 }) {
+  const pos = geo.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const r = Math.hypot(x, z)
+    const n = noise(x * scale, y * scale, z * scale, oct)
+    // perto do eixo não empurra para fora (evita esticar o polo do Lathe)
+    const k = r < 1e-3 ? 1 : 1 + (n * radial * Math.min(1, r / 0.4)) / r
+    pos.setXYZ(i, x * k, y + n * vertical, z * k)
+  }
+  geo.computeVertexNormals()
+}
+
+// Cor por vértice: fn(x, y, z) → THREE.Color
+function paintBy(geo, fn) {
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const c = new THREE.Color()
+  for (let i = 0; i < pos.count; i++) {
+    fn(pos.getX(i), pos.getY(i), pos.getZ(i), c)
+    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 }
 
 /* ───────────────────────── texturas ───────────────────────── */
 
 function makeTextures() {
+  // Carne: crosta de chapa (marrom-escuro) com pontos tostados e gordura brilhando
   const patty = canvasTexture(512, 512, (g, w, h) => {
     const r = rng(7)
-    g.fillStyle = '#4a2413'
+    g.fillStyle = '#3b2415'
     g.fillRect(0, 0, w, h)
-    for (let i = 0; i < 5200; i++) {
-      const s = 1 + r() * 4.5, tone = r()
-      g.fillStyle = tone < 0.45 ? 'rgba(28,11,4,.55)' : tone < 0.8 ? 'rgba(120,58,28,.5)' : 'rgba(175,95,48,.45)'
+    for (let i = 0; i < 7000; i++) {
+      const s = 0.8 + r() * 4, tone = r()
+      // marrons de carne selada (sem puxar para o vermelho/roxo)
+      g.fillStyle = tone < 0.4 ? 'rgba(20,12,6,.6)' : tone < 0.72 ? 'rgba(96,60,34,.55)'
+        : tone < 0.93 ? 'rgba(142,96,58,.5)' : 'rgba(192,140,92,.5)'
       g.beginPath()
-      g.arc(r() * w, r() * h, s, 0, Math.PI * 2)
+      g.ellipse(r() * w, r() * h, s, s * (0.5 + r() * 0.7), r() * 3, 0, Math.PI * 2)
       g.fill()
     }
-  })
-  const crumb = canvasTexture(256, 256, (g, w, h) => {
-    const r = rng(21)
-    g.fillStyle = '#f0cf95'
-    g.fillRect(0, 0, w, h)
+    // fiapos da carne moída
+    g.lineCap = 'round'
     for (let i = 0; i < 900; i++) {
-      g.fillStyle = r() < 0.5 ? 'rgba(200,150,80,.35)' : 'rgba(255,240,205,.5)'
+      const x = r() * w, y = r() * h, a = r() * Math.PI * 2, l = 3 + r() * 9
+      g.strokeStyle = r() < 0.5 ? 'rgba(20,12,6,.45)' : 'rgba(160,110,70,.35)'
+      g.lineWidth = 1 + r() * 1.6
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke()
+    }
+  })
+  // Relevo da carne (independente da cor: grumos)
+  const pattyBump = canvasTexture(256, 256, (g, w, h) => {
+    const r = rng(17)
+    g.fillStyle = '#808080'
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 2600; i++) {
+      const v = Math.floor(r() * 255)
+      g.fillStyle = `rgba(${v},${v},${v},.5)`
+      g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 3.5, 0, Math.PI * 2); g.fill()
+    }
+  }, false)
+  // Miolo tostado na chapa: centro dourado, manchas mais escuras, borda clara
+  const crumb = canvasTexture(512, 512, (g, w, h) => {
+    const r = rng(21)
+    const grd = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+    grd.addColorStop(0, '#a8662c')
+    grd.addColorStop(0.55, '#b97a3c')
+    grd.addColorStop(0.8, '#d6a463')
+    grd.addColorStop(0.93, '#e9c58a')
+    grd.addColorStop(1, '#c58a45')
+    g.fillStyle = grd
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 260; i++) {
+      const x = w / 2 + (r() - 0.5) * w * 0.8, y = h / 2 + (r() - 0.5) * h * 0.8
+      g.fillStyle = 'rgba(140,72,22,.18)'
+      g.beginPath(); g.ellipse(x, y, 6 + r() * 22, 4 + r() * 14, r() * 3, 0, Math.PI * 2); g.fill()
+    }
+    for (let i = 0; i < 2400; i++) {
+      g.fillStyle = r() < 0.55 ? 'rgba(120,70,25,.28)' : 'rgba(255,240,205,.35)'
       g.beginPath()
-      g.ellipse(r() * w, r() * h, 1 + r() * 3, 1 + r() * 2, r() * 3, 0, Math.PI * 2)
+      g.ellipse(r() * w, r() * h, 0.8 + r() * 2.6, 0.6 + r() * 1.6, r() * 3, 0, Math.PI * 2)
       g.fill()
     }
   })
-  const bacon = canvasTexture(512, 64, (g, w, h) => {
+  // Bacon: faixas de carne e gordura, bordas tostadas
+  const bacon = canvasTexture(512, 96, (g, w, h) => {
     const grd = g.createLinearGradient(0, 0, 0, h)
-    grd.addColorStop(0, '#5e170b')
-    grd.addColorStop(0.18, '#a8321e')
-    grd.addColorStop(0.42, '#f1b8a0')
-    grd.addColorStop(0.55, '#b8402a')
-    grd.addColorStop(0.78, '#e7a089')
-    grd.addColorStop(1, '#5e170b')
+    grd.addColorStop(0, '#3e0f06')
+    grd.addColorStop(0.1, '#8a2a14')
+    grd.addColorStop(0.3, '#b54a2a')
+    grd.addColorStop(0.42, '#efc2a2')
+    grd.addColorStop(0.54, '#9c341b')
+    grd.addColorStop(0.72, '#e5ae8a')
+    grd.addColorStop(0.88, '#7a2410')
+    grd.addColorStop(1, '#3e0f06')
     g.fillStyle = grd
     g.fillRect(0, 0, w, h)
     const r = rng(5)
-    for (let i = 0; i < 160; i++) {
-      g.fillStyle = r() < 0.5 ? 'rgba(60,15,5,.35)' : 'rgba(255,210,180,.25)'
-      g.fillRect(r() * w, r() * h, 6 + r() * 30, 1 + r() * 2)
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = r() < 0.55 ? 'rgba(45,12,4,.35)' : 'rgba(255,215,185,.22)'
+      g.fillRect(r() * w, r() * h, 6 + r() * 40, 1 + r() * 2.5)
+    }
+    // pontas mais crocantes
+    for (const x0 of [0, w]) {
+      const e = g.createLinearGradient(x0, 0, x0 === 0 ? 60 : w - 60, 0)
+      e.addColorStop(0, 'rgba(40,10,3,.75)')
+      e.addColorStop(1, 'rgba(40,10,3,0)')
+      g.fillStyle = e
+      g.fillRect(x0 === 0 ? 0 : w - 60, 0, 60, h)
     }
   })
-  return { patty, crumb, bacon }
+  // Tomate: pele, polpa e lóculos com gel e sementes
+  const tomato = canvasTexture(512, 512, (g, w, h) => {
+    const r = rng(31)
+    const cx = w / 2, cy = h / 2, R = w / 2
+    g.fillStyle = '#b81d0e'
+    g.fillRect(0, 0, w, h)
+    const flesh = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R)
+    flesh.addColorStop(0, '#f05a3a')
+    flesh.addColorStop(0.8, '#e23b20')
+    flesh.addColorStop(0.95, '#c4220f')
+    flesh.addColorStop(1, '#8e1508')
+    g.fillStyle = flesh
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill()
+    // 5 lóculos (gel alaranjado + sementes)
+    const N = 5
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2 + 0.3
+      const lx = cx + Math.cos(a) * R * 0.5, ly = cy + Math.sin(a) * R * 0.5
+      g.save()
+      g.translate(lx, ly); g.rotate(a)
+      const gel = g.createRadialGradient(0, 0, 4, 0, 0, R * 0.26)
+      gel.addColorStop(0, 'rgba(255,170,90,.95)')
+      gel.addColorStop(0.7, 'rgba(244,112,60,.85)')
+      gel.addColorStop(1, 'rgba(230,70,40,0)')
+      g.fillStyle = gel
+      g.beginPath(); g.ellipse(0, 0, R * 0.25, R * 0.17, 0, 0, Math.PI * 2); g.fill()
+      for (let i = 0; i < 9; i++) {
+        g.fillStyle = 'rgba(250,225,140,.95)'
+        g.beginPath()
+        g.ellipse((r() - 0.5) * R * 0.3, (r() - 0.5) * R * 0.18, 5, 3, r() * 3, 0, Math.PI * 2)
+        g.fill()
+      }
+      g.restore()
+    }
+    // miolo central mais claro
+    g.fillStyle = 'rgba(255,140,110,.55)'
+    g.beginPath(); g.arc(cx, cy, R * 0.16, 0, Math.PI * 2); g.fill()
+  })
+  // Alface: nervuras claras saindo do centro
+  const lettuce = canvasTexture(512, 512, (g, w, h) => {
+    const r = rng(41)
+    g.fillStyle = '#ffffff'
+    g.fillRect(0, 0, w, h)
+    g.lineCap = 'round'
+    for (let i = 0; i < 30; i++) {
+      const a = r() * Math.PI * 2
+      g.strokeStyle = 'rgba(235,255,200,.18)'
+      g.lineWidth = 1.5 + r() * 3
+      g.beginPath()
+      g.moveTo(w / 2, h / 2)
+      const L = w * (0.3 + r() * 0.22)
+      g.quadraticCurveTo(w / 2 + Math.cos(a + 0.2) * L * 0.6, h / 2 + Math.sin(a + 0.2) * L * 0.6, w / 2 + Math.cos(a) * L, h / 2 + Math.sin(a) * L)
+      g.stroke()
+    }
+    for (let i = 0; i < 1500; i++) {
+      g.fillStyle = r() < 0.5 ? 'rgba(40,90,20,.12)' : 'rgba(255,255,255,.15)'
+      g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 5, 0, Math.PI * 2); g.fill()
+    }
+  })
+  // Casca do pão: poros finos e leves rachaduras (relevo)
+  const bunBump = canvasTexture(1024, 512, (g, w, h) => {
+    const r = rng(53)
+    g.fillStyle = '#808080'
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 9000; i++) {
+      const v = r() < 0.5 ? 70 : 170
+      g.fillStyle = `rgba(${v},${v},${v},.35)`
+      g.beginPath(); g.ellipse(r() * w, r() * h, 0.6 + r() * 1.8, 0.5 + r() * 1.2, r() * 3, 0, Math.PI * 2); g.fill()
+    }
+    for (let i = 0; i < 40; i++) {
+      g.strokeStyle = 'rgba(60,60,60,.25)'
+      g.lineWidth = 1
+      let x = r() * w, y = r() * h
+      g.beginPath(); g.moveTo(x, y)
+      for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 30; y += (r() - 0.5) * 12; g.lineTo(x, y) }
+      g.stroke()
+    }
+  }, false)
+  return { patty, pattyBump, crumb, bacon, tomato, lettuce, bunBump }
 }
 
 /* ───────────────────────── modelo ───────────────────────── */
 
-export function buildBurger({ shadows = true } = {}) {
+export function buildBurger({ shadows = true, mobile = false } = {}) {
   const tex = makeTextures()
+  // Celular: MeshPhysical (clearcoat/sheen) pesa muito na GPU do aparelho →
+  // usa MeshStandard com as mesmas cores (o RoomEnvironment segura o brilho)
+  const Physical = mobile
+    ? (o) => {
+        const { clearcoat, clearcoatRoughness, sheen, sheenColor, sheenRoughness, ...rest } = o
+        return new THREE.MeshStandardMaterial(rest)
+      }
+    : (o) => new THREE.MeshPhysicalMaterial(o)
 
   const M = {
-    bun: new THREE.MeshPhysicalMaterial({
-      vertexColors: true, roughness: 0.48, clearcoat: 0.6, clearcoatRoughness: 0.28, sheen: 0.4,
-      sheenColor: new THREE.Color('#ffcf8a'), sheenRoughness: 0.6,
+    // brioche pincelado com gema: brilho de verniz por cima da casca
+    bun: Physical({
+      vertexColors: true, bumpMap: tex.bunBump, bumpScale: 0.9,
+      roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.5, sheen: 0.25,
+      sheenColor: new THREE.Color('#ffd9a0'), sheenRoughness: 0.7,
     }),
-    crumb: new THREE.MeshStandardMaterial({ map: tex.crumb, roughness: 0.95 }),
-    patty: new THREE.MeshStandardMaterial({ map: tex.patty, bumpMap: tex.patty, bumpScale: 2.2, roughness: 0.72 }),
-    cheese: new THREE.MeshPhysicalMaterial({
-      color: '#f59200', roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.2,
-      emissive: '#6a2a00', emissiveIntensity: 0.25, side: THREE.DoubleSide,
+    crumb: new THREE.MeshStandardMaterial({ map: tex.crumb, bumpMap: tex.pattyBump, bumpScale: 0.6, roughness: 0.92 }),
+    patty: new THREE.MeshStandardMaterial({
+      vertexColors: true, map: tex.patty, bumpMap: tex.pattyBump, bumpScale: 1.6, roughness: 0.78, metalness: 0,
     }),
-    sauce: new THREE.MeshPhysicalMaterial({ color: '#f3e2bd', roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.08 }),
-    lettuce: new THREE.MeshStandardMaterial({ color: '#6fbf3d', roughness: 0.5, side: THREE.DoubleSide }),
-    tomato: new THREE.MeshPhysicalMaterial({ color: '#d8301a', roughness: 0.22, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-    bacon: new THREE.MeshStandardMaterial({ map: tex.bacon, roughness: 0.45, side: THREE.DoubleSide }),
-    sesame: new THREE.MeshStandardMaterial({ color: '#f6e7c3', roughness: 0.55 }),
+    // cheddar tipo americano: lençol liso, brilhante, quase translúcido
+    cheese: Physical({
+      color: '#ee8a08', roughness: 0.34, clearcoat: 0.45, clearcoatRoughness: 0.25,
+      sheen: 0.25, sheenColor: new THREE.Color('#ffc060'),
+      emissive: '#5a2000', emissiveIntensity: 0.12, side: THREE.DoubleSide,
+    }),
+    sauce: Physical({ color: '#efd9a2', roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.05 }),
+    lettuce: new THREE.MeshStandardMaterial({
+      vertexColors: true, map: tex.lettuce, roughness: 0.45, side: THREE.DoubleSide,
+    }),
+    tomato: Physical({ color: '#c8240f', roughness: 0.2, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+    tomatoCut: Physical({ map: tex.tomato, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.05 }),
+    bacon: new THREE.MeshStandardMaterial({ map: tex.bacon, roughness: 0.4, side: THREE.DoubleSide }),
+    sesame: new THREE.MeshStandardMaterial({ color: '#f1dfb0', roughness: 0.5 }),
+  }
+
+  const noise = makeNoise(3)
+  // Casca do brioche: base clara (onde cresceu no forno) → topo bem dourado,
+  // com manchas de forno; `crown` = altura do ponto mais tostado
+  const bunColor = (y0, y1, light, dark, invert = false) => {
+    const A = new THREE.Color(light), B = new THREE.Color(dark), C = new THREE.Color('#5a2207')
+    return (x, y, z, c) => {
+      let t = Math.min(1, Math.max(0, (y - y0) / (y1 - y0)))
+      if (invert) t = 1 - t
+      t = t * t * (3 - 2 * t)
+      const n = noise(x * 2.2, y * 2.2, z * 2.2, 3)
+      c.copy(A).lerp(B, Math.min(1, Math.max(0, t + n * 0.12)))
+      c.lerp(C, Math.max(0, n) * 0.3 * t) // manchas mais tostadas no topo
+    }
   }
 
   const mesh = (geo, mat) => {
@@ -181,11 +381,13 @@ export function buildBurger({ shadows = true } = {}) {
     const prof = [
       [0, 0], [1.25, 0], [1.42, 0.03], [1.51, 0.12], [1.54, 0.28], [1.52, 0.42], [1.46, 0.52], [1.4, 0.55],
     ].map(([x, y]) => new THREE.Vector2(x, y))
-    const geo = new THREE.LatheGeometry(prof, 80)
+    const geo = new THREE.LatheGeometry(prof, 96)
     wobbleRadius(geo, 0.012, 2)
-    paintVertical(geo, 0, 0.55, '#6e2e0c', '#c97a26')
+    displace(geo, noise, { scale: 1.6, radial: 0.035, vertical: 0.01 })
+    // fundo tostado em contato com a chapa → lateral clarinha
+    paintBy(geo, bunColor(0.02, 0.4, '#e2ae66', '#7a330c', true))
     g.add(mesh(geo, M.bun))
-    const cap = new THREE.CircleGeometry(1.4, 80)
+    const cap = new THREE.CircleGeometry(1.4, 96)
     cap.rotateX(-Math.PI / 2)
     cap.translate(0, 0.55, 0)
     g.add(mesh(cap, M.crumb))
@@ -201,21 +403,24 @@ export function buildBurger({ shadows = true } = {}) {
       const a = (i / 28) * (Math.PI / 2)
       prof.push(new THREE.Vector2(R * Math.cos(a) + 0.0001, 0.16 + 1.02 * Math.pow(Math.sin(a), 0.85)))
     }
-    const geo = new THREE.LatheGeometry(prof, 96)
+    const geo = new THREE.LatheGeometry(prof, 128)
     wobbleRadius(geo, 0.01, 5)
-    paintVertical(geo, 0, 1.18, '#d98c32', '#6e2a08')
+    // domo levemente irregular (massa fermentada, nunca uma esfera perfeita)
+    displace(geo, noise, { scale: 1.3, radial: 0.045, vertical: 0.035 })
+    paintBy(geo, bunColor(0.04, 0.5, '#e8b46a', '#8f3e0e'))
     g.add(mesh(geo, M.bun))
 
-    const cap = new THREE.CircleGeometry(1.38, 80)
+    const cap = new THREE.CircleGeometry(1.38, 96)
     cap.rotateX(Math.PI / 2)
     g.add(mesh(cap, M.crumb))
 
     // Gergelim: 1 draw call, cada semente achatada e orientada pela normal do domo
-    const COUNT = 80, r = rng(13)
+    const COUNT = mobile ? 110 : 150, r = rng(13)
     const seeds = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), M.sesame, COUNT)
+    const seedTint = new THREE.Color()
     const d = new THREE.Object3D(), n = new THREE.Vector3()
     for (let k = 0; k < COUNT; k++) {
-      const el = 0.35 + r() * 1.05
+      const el = 0.3 + Math.sqrt(r()) * 1.15
       const th = r() * Math.PI * 2
       const px = R * Math.cos(el) * Math.cos(th)
       const pz = R * Math.cos(el) * Math.sin(th)
@@ -224,9 +429,13 @@ export function buildBurger({ shadows = true } = {}) {
       d.position.set(px, py, pz).addScaledVector(n, 0.01)
       d.lookAt(d.position.clone().add(n))
       d.rotateZ(r() * Math.PI)
-      d.scale.set(0.075, 0.04, 0.022)
+      const sz = 0.8 + r() * 0.4
+      d.scale.set(0.068 * sz, 0.036 * sz, 0.02)
       d.updateMatrix()
       seeds.setMatrixAt(k, d.matrix)
+      // umas mais tostadas que outras
+      seedTint.setRGB(1, 1, 1).lerp(new THREE.Color('#d9a35c'), r() * r() * 0.8)
+      seeds.setColorAt(k, seedTint)
     }
     seeds.castShadow = shadows
     g.add(seeds)
@@ -235,8 +444,10 @@ export function buildBurger({ shadows = true } = {}) {
 
   /* Maionese da casa: camada fina e brilhante com borda irregular */
   function sauce() {
-    const geo = new THREE.LatheGeometry(roundedProfile(1.28, 0.08, 0.04, 4), 72)
+    const geo = new THREE.LatheGeometry(roundedProfile(1.18, 0.07, 0.035, 5), 120)
     wobbleRadius(geo, 0.07, 9)
+    // espalhada com a faca: borda em gotas irregulares, superfície ondulada
+    displace(geo, makeNoise(61), { scale: 2.6, radial: 0.12, vertical: 0.015, oct: 3 })
     const g = new THREE.Group()
     g.add(mesh(geo, M.sauce))
     return g
@@ -244,9 +455,22 @@ export function buildBurger({ shadows = true } = {}) {
 
   /* Carne: disco com bordas arredondadas e irregulares, crosta na textura */
   function patty(seed) {
-    const geo = new THREE.LatheGeometry(roundedProfile(1.56, 0.42, 0.15, 6), 80)
+    const geo = new THREE.LatheGeometry(roundedProfile(1.56, 0.4, 0.16, 8), 112)
     wobbleRadius(geo, 0.03, seed)
-    planarUV(geo)
+    // carne moída prensada: borda com grumos e faces irregulares
+    const pn = makeNoise(Math.round(seed * 10))
+    displace(geo, pn, { scale: 3.2, radial: 0.05, vertical: 0.012, oct: 4 })
+    displace(geo, makeNoise(Math.round(seed * 10) + 1), { scale: 9, radial: 0.018, vertical: 0, oct: 2 })
+    capSideUV(geo)
+    // crosta mais escura nas faces e na quina, lateral um pouco mais clara/suculenta
+    const dark = new THREE.Color('#4a3020'), side = new THREE.Color('#b08a70'), cc = new THREE.Color()
+    paintBy(geo, (x, y, z, c) => {
+      const mid = 1 - Math.min(1, Math.abs(y - 0.2) / 0.2)
+      const n = pn(x * 5, y * 5, z * 5, 2)
+      c.setRGB(1, 1, 1).lerp(side, mid * 0.45 + n * 0.1)
+      cc.copy(c).lerp(dark, Math.max(0, n) * 0.6)
+      c.copy(cc)
+    })
     const g = new THREE.Group()
     const m = mesh(geo, M.patty)
     m.rotation.y = seed
@@ -257,22 +481,43 @@ export function buildBurger({ shadows = true } = {}) {
   /* Cheddar: placa quadrada que derrete sobre a carne + gotas escorrendo */
   function cheese(angle) {
     const g = new THREE.Group()
-    const geo = new THREE.BoxGeometry(2.95, 0.045, 2.95, 56, 1, 56)
+    const geo = new THREE.BoxGeometry(2.95, 0.035, 2.95, 72, 1, 72)
     const pos = geo.attributes.position
+    const cn = makeNoise(Math.round(angle * 100) + 7)
+    // derrete sobre a quina da carne e escorre; as pontas cedem mais
     const droop = (x, z) => {
-      const over = Math.max(0, Math.sqrt(x * x + z * z) - 1.45)
-      return -(over * over * 1.25 + over * 0.35)
+      // começa a cair só depois da quina arredondada da carne (r ≈ 1,5);
+      // a linha onde derrete varia ao redor (nunca é um círculo perfeito)
+      const th = Math.atan2(z, x)
+      const edge = 1.5 + Math.abs(cn(Math.cos(th) * 1.6, 3, Math.sin(th) * 1.6, 2)) * 0.18
+      const over = Math.max(0, Math.sqrt(x * x + z * z) - edge)
+      return -(over * over * 1.9 + over * 0.5)
     }
-    for (let i = 0; i < pos.count; i++) pos.setY(i, pos.getY(i) + droop(pos.getX(i), pos.getZ(i)))
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i)
+      // pontas encolhem (queijo derretido puxa para dentro) + ondinhas
+      const r = Math.hypot(x, z), over = Math.max(0, r - 1.6)
+      const pull = 1 - over * 0.22
+      const wav = Math.abs(cn(x * 2.4, 0, z * 2.4, 2)) * 0.03 * Math.min(1, Math.max(0, r - 1.5) * 3)
+      pos.setXYZ(i, x * pull, pos.getY(i) + 0.012 + droop(x, z) + wav, z * pull)
+    }
     geo.computeVertexNormals()
     g.add(mesh(geo, M.cheese))
     const DRIPS = [[1.44, 1.44, 0.34], [-1.44, 1.44, 0.22], [1.44, -1.44, 0.18], [-1.44, -1.44, 0.3],
       [1.47, 0.35, 0.16], [-0.5, 1.47, 0.2], [0.2, -1.47, 0.24]]
     for (const [x, z, len] of DRIPS) {
-      const cap = mesh(new THREE.CapsuleGeometry(0.075, len, 4, 10), M.cheese)
-      const k = 0.93
-      cap.position.set(x * k, droop(x * k, z * k) - len / 2 - 0.02, z * k)
-      g.add(cap)
+      // ponto da borda já derretida (mesmo puxão da placa), um pouco para dentro
+      const k = 0.9
+      const px = x * k, pz = z * k
+      const pull = 1 - Math.max(0, Math.hypot(px, pz) - 1.6) * 0.22
+      // gota: mais grossa embaixo (gravidade), presa à borda
+      const drop = mesh(new THREE.CapsuleGeometry(0.06, len, 4, 12), M.cheese)
+      drop.scale.set(1, 1, 0.8)
+      drop.position.set(px * pull, 0.012 + droop(px, pz) - len / 2 + 0.01, pz * pull)
+      const tip = mesh(new THREE.SphereGeometry(0.078, 12, 10), M.cheese)
+      tip.position.set(0, -len / 2 - 0.01, 0)
+      drop.add(tip)
+      g.add(drop)
     }
     g.rotation.y = angle
     return g
@@ -280,29 +525,52 @@ export function buildBurger({ shadows = true } = {}) {
 
   /* Alface: anel ondulado, maior que o pão */
   function lettuce() {
-    const geo = new THREE.RingGeometry(0.02, 1.82, 128, 8)
-    geo.rotateX(-Math.PI / 2)
-    const pos = geo.attributes.position
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i)
-      const r = Math.sqrt(x * x + z * z), th = Math.atan2(z, x)
-      const t = r / 1.82
-      const k = 1 + 0.05 * Math.sin(th * 9) * t
-      pos.setX(i, x * k)
-      pos.setZ(i, z * k)
-      pos.setY(i, Math.sin(th * 18) * 0.06 * t * t + Math.sin(th * 5) * 0.025 - t * t * 0.08)
-    }
-    geo.computeVertexNormals()
     const g = new THREE.Group()
-    g.add(mesh(geo, M.lettuce))
+    const pale = new THREE.Color('#d6eb92'), mid = new THREE.Color('#79c043'), edge = new THREE.Color('#3f8f22')
+    // duas folhas sobrepostas, cada uma com contorno em lóbulos e babados
+    const leaf = (R, seed, lift) => {
+      const geo = new THREE.RingGeometry(0.02, R, 160, 10)
+      geo.rotateX(-Math.PI / 2)
+      const pos = geo.attributes.position
+      const ln = makeNoise(seed)
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), z = pos.getZ(i)
+        const r = Math.hypot(x, z), th = Math.atan2(z, x)
+        const t = r / R
+        const cx = Math.cos(th) * 1.3, cz = Math.sin(th) * 1.3
+        // lóbulos irregulares do contorno
+        const lobe = ln(cx, seed, cz, 3) * 0.22 + Math.sin(th * 7 + seed) * 0.04
+        const k = 1 + lobe * t * t
+        pos.setX(i, x * k)
+        pos.setZ(i, z * k)
+        // babados finos na borda (folha crespa) + ondas largas + caimento
+        const frill = Math.sin(th * 38 + seed) * 0.03 + Math.sin(th * 17 + seed * 2) * 0.05
+        pos.setY(i, lift + frill * Math.pow(Math.max(0, t - 0.55) / 0.45, 2) + ln(x * 1.4, 0, z * 1.4, 2) * 0.06 * t - t * t * 0.1)
+      }
+      geo.computeVertexNormals()
+      const uv = geo.attributes.uv
+      for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / 3.9 + 0.5, pos.getZ(i) / 3.9 + 0.5)
+      paintBy(geo, (x, y, z, c) => {
+        const t = Math.hypot(x, z) / (R * 1.05)
+        if (t < 0.55) c.copy(pale).lerp(mid, t / 0.55)
+        else c.copy(mid).lerp(edge, Math.min(1, (t - 0.55) / 0.45))
+        c.offsetHSL(0, 0, ln(x * 3, 1, z * 3, 2) * 0.07)
+      })
+      return mesh(geo, M.lettuce)
+    }
+    g.add(leaf(1.8, 11, 0))
+    const top = leaf(1.66, 29, 0.035)
+    top.rotation.y = 2.1
+    g.add(top)
     return g
   }
 
   /* Tomate: fatia fina e brilhante */
   function tomato() {
     const g = new THREE.Group()
-    const m = mesh(new THREE.CylinderGeometry(1.32, 1.32, 0.1, 56), M.tomato)
-    m.position.y = 0.05
+    // lateral = pele; tampas = corte com polpa, gel e sementes
+    const m = mesh(new THREE.CylinderGeometry(1.32, 1.3, 0.11, 64), [M.tomato, M.tomatoCut, M.tomatoCut])
+    m.position.y = 0.055
     g.add(m)
     return g
   }
@@ -311,12 +579,15 @@ export function buildBurger({ shadows = true } = {}) {
   function bacon() {
     const g = new THREE.Group()
     ;[[0.35, 0, 0.0], [-0.25, 0.04, 1.15], [0.05, 0.08, 2.2]].forEach(([z, y, rot], idx) => {
-      const geo = new THREE.PlaneGeometry(3.7, 0.42, 100, 3)
+      const geo = new THREE.PlaneGeometry(3.7, 0.6, 100, 4)
       geo.rotateX(-Math.PI / 2)
       const pos = geo.attributes.position
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i)
-        pos.setY(i, Math.sin(x * 4.2 + idx) * 0.07 - x * x * 0.03)
+        const zz = pos.getZ(i)
+        // ondas irregulares de bacon crocante + leve torção ao longo da tira
+        pos.setY(i, Math.sin(x * 4.2 + idx) * 0.075 + Math.sin(x * 9.5 + idx * 2) * 0.02
+          - x * x * 0.03 + zz * Math.sin(x * 2 + idx) * 0.18)
       }
       geo.computeVertexNormals()
       const m = mesh(geo, M.bacon)

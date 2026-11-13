@@ -33,8 +33,8 @@
     var items = FB.qsa('.science__item', section);
 
     var cleanups = [];
-    // Palco 3D ativo (classe posta no <head> antes do CSS/JS)
-    var pinned = document.documentElement.classList.contains('has-3d');
+    // Palco 3D fixo ativo (classe posta no <head> antes do CSS/JS)
+    var pinned = document.documentElement.classList.contains('has-pin');
 
     /* =====================================================================
        A) TÍTULO — divide em palavras preservando o <em>

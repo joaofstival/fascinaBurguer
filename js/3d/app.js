@@ -83,23 +83,23 @@ document.documentElement.addEventListener('mouseleave', () => {
 })
 
 /* ── resize / troca celular ↔ desktop ── */
+// No celular a barra de endereço dispara 'resize' a cada rolada: o stage
+// ignora mudanças só de altura (ver stage.size) e aqui só remedimos o
+// trilho quando o palco realmente mudou de tamanho — senão o lanche "pula".
 let rq = 0
-function onResize() {
+function onResize(force = false) {
   cancelAnimationFrame(rq)
   rq = requestAnimationFrame(() => {
-    stage.size()
+    if (!stage.size(force) && !force) return
     track.measure()
     lenis.resize()
   })
 }
-addEventListener('resize', onResize)
-mq.addEventListener('change', (e) => {
-  mobile = e.matches
-  track = createTrack(stage, { mobile })
-  callouts.destroy()
-  callouts = createCallouts(stage, { gsap, mobile })
-  onResize()
-})
+addEventListener('resize', () => onResize())
+addEventListener('orientationchange', () => setTimeout(() => onResize(true), 250))
+// Celular ↔ desktop muda o layout da página toda (hero parado × seção
+// presa com o lanche explodindo): recarrega para montar o modo certo.
+mq.addEventListener('change', () => location.reload())
 // Pins do GSAP (cardápio) mudam a altura da página → remede o trilho
 ScrollTrigger.addEventListener('refresh', () => track.measure())
 // (main.js já faz ScrollTrigger.refresh() em fonts.ready e load — o evento acima remede o trilho)

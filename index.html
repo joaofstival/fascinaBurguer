@@ -38,6 +38,9 @@
         var lose = gl.getExtension('WEBGL_lose_context');
         if (lose) lose.loseContext();
         d.classList.add('has-3d');
+        // "A Ciência do Sabor" vira palco fixo com o lanche explodindo
+        // (no celular o lanche começa parado no hero e anima depois).
+        d.classList.add('has-pin');
       } catch (e) {}
     })();
   </script>
